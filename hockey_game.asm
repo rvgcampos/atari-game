@@ -181,11 +181,41 @@ DrawBitmap:
     lda #0
     sta VBLANK
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Input para o player 0
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+CheckP0Up:
+    lda #%00010000
+    bit SWCHA
+    bne CheckP0Down
+    inc P0XPos
+
+CheckP0Down:
+    lda #%00100000
+    bit SWCHA
+    bne CheckP0Left
+    dec P0XPos
+
+CheckP0Left:
+    lda #%01000000
+    bit SWCHA
+    bne CheckP0Right
+    dec P0XPos
+
+CheckP0Right:
+    lda #%10000000
+    bit SWCHA
+    bne NoInput
+    inc P0XPos
+
+NoInput:
+    
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Pular para o proximo frame 
+;;; Pular para o proximo frame 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     jmp NextFrame
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Bitmap:
