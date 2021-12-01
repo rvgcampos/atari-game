@@ -1,4 +1,3 @@
-
 	processor 6502
     include "vcs.h"
     include "macro.h"  
@@ -9,13 +8,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     seg.u Variables
     org $80
-P0XPos byte                 ; Sprite X coordinate 
-P1XPos byte                 ; Sprite X coordinate 
-P0YPos byte                 ; Sprite y coordinate 
-P1YPos byte                 ; Sprite y coordinate 
+P0XPos byte                 ; Player 0 - eixo-x 
+P1XPos byte                 ; Player 1 - eixo-x 
+P0YPos byte                 ; Player 0 - eixo-y 
+P1YPos byte                 ; Player 1 - eixo-y 
+PlayerHeight byte           ; Altura dos Players 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Começo da ROM em $F000
+;;; Começo da ROM (o jogo em si) em $F000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     seg code
     org $F000     
@@ -30,19 +30,22 @@ Start:
     stx COLUPF              ; Cor do playfield (Verde)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Iniciar Variavel
+;;; Iniciar Variáveis
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda #30
-    sta P0XPos     ; initialize player X coordinate
+    sta P0XPos     
 
     lda #110
-    sta P1XPos     ; initialize player X coordinate
+    sta P1XPos    
     
     lda #30
-    sta P0YPos     ; initialize player y coordinate
+    sta P0YPos     
 
     lda #110
-    sta P1YPos     ; initialize player y coordinate
+    sta P1YPos     
+
+    lda #24
+    sta PlayerHeight
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Renderizar o frame
@@ -71,6 +74,10 @@ NextFrame:
     sta WSYNC      ; Espera scanline
     sta HMCLR      ; Limpa valores de posições horizontais
     sec            ; Setando a flag de carry antes da subtração
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Posicionando Player 0 no eixo-x
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 DivideLoop:
     sbc #15        ; Subtrai 15 do do registrador A
     bcs DivideLoop ; Faz o loop enquanto a flag de carry está setada (ajuste GROSSO)
@@ -92,8 +99,12 @@ DivideLoop:
     sta WSYNC      ; Espera scanline
     sta HMCLR      ; Limpa valores de posições horizontais
     sec            ; Setando a flag de carry antes da subtração
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Posicionando Player 1 no eixo-x
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 DivideLoop1:
-    sbc #15        ; Subtrai 15 do do registrador A
+    sbc #15         ; Subtrai 15 do do registrador A
     bcs DivideLoop1 ; Faz o loop enquanto a flag de carry está setada (ajuste GROSSO)
 
     eor #7         ; Ajusta o resto (da divisão) pra ficar entre -8 e 7 (ajuste FINO)
@@ -113,7 +124,7 @@ DivideLoop1:
         sta WSYNC
     REPEND
     lda #0
-    sta VBLANK     ; turn VBLANK off
+    sta VBLANK     ; Desliga VBLANK
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Alterando o registrador CTRLPF para permitir a reflexão do playfield 
@@ -125,7 +136,7 @@ DivideLoop1:
 ;;; Scanlines Principais (192 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    ; Pulando 14 linhas, ou seja, tornando as preto
+    ; Pulando 14 linhas, ou seja, tornando as preto (14 linhas)
     ldx #0
     stx PF0
     stx PF1
@@ -134,7 +145,7 @@ DivideLoop1:
        sta WSYNC   
     REPEND
 
-    ; Parte superior do playfield
+    ; Parte superior do playfield (7 linhas)
     ldx #%11100000
     stx PF0
     ldx #%11111111
@@ -144,7 +155,7 @@ DivideLoop1:
         sta WSYNC
     REPEND
 
-    ; Lateral do playfield
+    ; Lateral do playfield (75 linhas)
     ldx #%00100000
     stx PF0
     ldx #%00000000
@@ -155,32 +166,36 @@ DivideLoop1:
         sta WSYNC
     REPEND
 
-    ldy #24  ;tamanho dos sprites
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Desenhando os players no eixo-x
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
+    ldy #24 ; Tamanho dos sprites
 DrawBitmap:
-    lda P0Bitmap,Y ; load player bitmap slice of data
-    sta GRP0       ; set graphics for player 0 slice
-    lda P0Color,Y  ; load player color from lookup table
-    sta COLUP0     ; set color for player 0 slice
+    lda P0Bitmap,Y ; Carrega o bitmap do Player 0
+    sta GRP0       ; Armazena no registrador de graficos do Player 0
+    lda P0Color,Y  ; Carrega a cor do Player 0
+    sta COLUP0     ; Armazena no registrador de cor do Player 0
 
-    lda P1Bitmap,Y ; load player bitmap slice of data
-    sta GRP1       ; set graphics for player 0 slice
-    lda P1Color,Y  ; load player color from lookup table
-    sta COLUP1     ; set color for player 0 slice
+    lda P1Bitmap,Y ; Carrega o bitmap do Player 1
+    sta GRP1       ; Armazena no registrador de graficos do Player 1
+    lda P1Color,Y  ; Carrega a cor do Player 1
+    sta COLUP1     ; Armazena no registrador de cor do Player 0
 
-    sta WSYNC      ; wait for next scanline
+    sta WSYNC      ; Espera próxima linha
 
     dey
-    bne DrawBitmap ; repeat next scanline until finished
+    bne DrawBitmap ; Repete próxima linha até terminar de desenhar
 
     lda #0
-    sta GRP0       ; disable P0 bitmap graphics
-    sta GRP1       ; disable P0 bitmap graphics
+    sta GRP0       ; Desabilitar gráficos do player 0
+    sta GRP1       ; Desabilitar gráficos do player 1
 
     REPEAT 66
         sta WSYNC
     REPEND
 
-    ; Parte inferior do playfield
+    ; Parte inferior do playfield (7 linhas)
     ldx #%11100000
     stx PF0
     ldx #%11111111
@@ -190,7 +205,7 @@ DrawBitmap:
         sta WSYNC
     REPEND
 
-    ; Pulando 14 linhas, ou seja, tornando as preto
+    ; Pulando 14 linhas, ou seja, tornando as preto (14 linhas)
     ldx #0
     stx PF0
     stx PF1
@@ -200,7 +215,7 @@ DrawBitmap:
     REPEND
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Desenhando as 30 linhas do VBLANK (overscan)
+;;; Desenhando as 30 linhas do VBLANK (overscan) (30 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda #2      
     sta VBLANK  
@@ -213,7 +228,6 @@ DrawBitmap:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Input para o player 0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 CheckP0Up:
     lda #%00010000
     bit SWCHA
@@ -243,8 +257,6 @@ NoInput:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Input para o player 1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 CheckP1Up:
     lda #%00000001
     bit SWCHA
@@ -271,16 +283,17 @@ CheckP1Right:
 
 NoInput1:
     
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Pular para o proximo frame 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     jmp NextFrame
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Lookup table para os bitmaps dos players
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Bitmap:
     .byte #%00000000;$80
-   ; .byte #%01100001;$80
+    ;.byte #%01100001;$80
     ;.byte #%01000010;$80
     ;.byte #%01000100;$80
     ;.byte #%01001000;$70
@@ -292,39 +305,38 @@ P0Bitmap:
     ;.byte #%11111000;$36
     
     ;pernas
-   	 .byte #%11110111;$70
-        .byte #%10100100;$70
-        .byte #%10100100;$70
-        .byte #%10100100;$70
-        .byte #%10100100;$70
-        .byte #%10100100;$70
-        .byte #%10100100;$70
-        .byte #%10100100;$70
+   	.byte #%11110111;$70
+    .byte #%10100100;$70
+    .byte #%10100100;$70
+    .byte #%10100100;$70
+    .byte #%10100100;$70
+    .byte #%10100100;$70
+    .byte #%10100100;$70
+    .byte #%10100100;$70
     
-    	;corpo
-        .byte #%11100110;$30
-        .byte #%11100100;$30
-        .byte #%11101100;$30
-        .byte #%11101000;$30
-        .byte #%11101000;$30
-        .byte #%11111000;$30
-        .byte #%11111000;$30
-        .byte #%11111000;$30
+    ;corpo
+    .byte #%11100110;$30
+    .byte #%11100100;$30
+    .byte #%11101100;$30
+    .byte #%11101000;$30
+    .byte #%11101000;$30
+    .byte #%11111000;$30
+    .byte #%11111000;$30
+    .byte #%11111000;$30
     
-    	;cabeça
-        .byte #%11111000;$36
-        .byte #%11001000;$36
-        .byte #%11011000;$36
-        .byte #%11111000;$36
-        .byte #%11101000;$36
-        .byte #%11110000;$36
-        .byte #%11111100;$30
-        .byte #%11110000;$30
-    
+    ;cabeça
+    .byte #%11111000;$36
+    .byte #%11001000;$36
+    .byte #%11011000;$36
+    .byte #%11111000;$36
+    .byte #%11101000;$36
+    .byte #%11110000;$36
+    .byte #%11111100;$30
+    .byte #%11110000;$30
 
 P1Bitmap:
     .byte #%00000000;$80
-   ; .byte #%10000110;$80
+    ;.byte #%10000110;$80
     ;.byte #%01000010;$80
     ;.byte #%00100010;$80
     ;.byte #%00010010;$70
@@ -335,82 +347,81 @@ P1Bitmap:
     
      ;pernas
    	.byte #%11101111;$80
-        .byte #%00100101;$80
-        .byte #%00100101;$80
-        .byte #%00100101;$80
-        .byte #%00100101;$80
-        .byte #%00100101;$80
-        .byte #%00100101;$80
-        .byte #%00100101;$80
+    .byte #%00100101;$80
+    .byte #%00100101;$80
+    .byte #%00100101;$80
+    .byte #%00100101;$80
+    .byte #%00100101;$80
+    .byte #%00100101;$80
+    .byte #%00100101;$80
     
-    	;corpo
-       
-        .byte #%01100111;$32
-        .byte #%00100111;$32
-        .byte #%00100111;$32
-        .byte #%00110111;$32
-        .byte #%00010111;$32
-        .byte #%00010111;$32
-        .byte #%00011111;$32
-        .byte #%00011111;$32
+    ;corpo
+    .byte #%01100111;$32
+    .byte #%00100111;$32
+    .byte #%00100111;$32
+    .byte #%00110111;$32
+    .byte #%00010111;$32
+    .byte #%00010111;$32
+    .byte #%00011111;$32
+    .byte #%00011111;$32
     
-    	;cabeça
-        .byte #%00011111;$34
-        .byte #%00010011;$34
-        .byte #%00011011;$34
-        .byte #%00011111;$34
-        .byte #%00010111;$34
-        .byte #%00011111;$34
-        .byte #%00111111;$30
-        .byte #%00001111;$30
+    ;cabeça
+    .byte #%00011111;$34
+    .byte #%00010011;$34
+    .byte #%00011011;$34
+    .byte #%00011111;$34
+    .byte #%00010111;$34
+    .byte #%00011111;$34
+    .byte #%00111111;$30
+    .byte #%00001111;$30
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Lookup table for the player colors
+;;; Lookup table para cores dos players
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Color:
     .byte #$00;
-   ; .byte #$80;
-   ; .byte #$80;
-   ; .byte #$80;
-   ; .byte #$70;
+    ;.byte #$80;
+    ;.byte #$80;
+    ;.byte #$80;
+    ;.byte #$70;
     ;.byte #$42;
     ;.byte #$42;
     ;.byte #$42;
     ;.byte #$3A;
-    	;cor das pernas
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
+
+    ;cor das pernas
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
     
-    	;cor do corpo
-    	.byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-    
+    ;cor do corpo
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
     
     ;cor da cabeça
-    	.byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$30;
-        .byte #$30;
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$30;
+    .byte #$30;
 
 P1Color:
     .byte #$00;
-   ; .byte #$80;
+    ;.byte #$80;
     ;.byte #$80;
     ;.byte #$80;
     ;.byte #$70;
@@ -420,36 +431,34 @@ P1Color:
     ;.byte #$3A;
     
     ;cor das pernas
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
     
-    	;cor do corpo
-    	.byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-        .byte #$30;
-    
+    ;cor do corpo
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
+    .byte #$30;
     
     ;cor da cabeça
-    	.byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$36;
-        .byte #$30;
-        .byte #$30;
-
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$36;
+    .byte #$30;
+    .byte #$30;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Completar a ROM para 4KB
