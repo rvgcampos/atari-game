@@ -11,6 +11,8 @@
     org $80
 P0XPos byte                 ; Sprite X coordinate 
 P1XPos byte                 ; Sprite X coordinate 
+P0YPos byte                 ; Sprite y coordinate 
+P1YPos byte                 ; Sprite y coordinate 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Começo da ROM em $F000
@@ -35,6 +37,12 @@ Start:
 
     lda #110
     sta P1XPos     ; initialize player X coordinate
+    
+    lda #30
+    sta P0YPos     ; initialize player y coordinate
+
+    lda #110
+    sta P1YPos     ; initialize player y coordinate
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Renderizar o frame
@@ -210,13 +218,13 @@ CheckP0Up:
     lda #%00010000
     bit SWCHA
     bne CheckP0Down
-    inc P0XPos
+    inc P0YPos
 
 CheckP0Down:
     lda #%00100000
     bit SWCHA
     bne CheckP0Left
-    dec P0XPos
+    dec P0YPos
 
 CheckP0Left:
     lda #%01000000
@@ -241,13 +249,13 @@ CheckP1Up:
     lda #%00000001
     bit SWCHA
     bne CheckP1Down
-    inc P1XPos
+    inc P1YPos
 
 CheckP1Down:
     lda #%00000010
     bit SWCHA
     bne CheckP1Left
-    dec P1XPos
+    dec P1YPos
 
 CheckP1Left:
     lda #%00000100
