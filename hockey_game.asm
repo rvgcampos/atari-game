@@ -289,7 +289,7 @@ CheckCollisionP0PF:
 
 .CollisionP0PF:
     dec P0XPos
-    dec P0YPos
+
 CheckCollisionP1PF:
     lda #%10000000
     bit CXP1FB
@@ -298,7 +298,6 @@ CheckCollisionP1PF:
 
 .CollisionP1PF:
     inc P1XPos
-    inc P1YPos
     
 EndCollisionCheck:
     sta CXCLR
@@ -335,16 +334,6 @@ SetObjectXPos subroutine
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Bitmap:
     .byte #%00000000;$80
-    ;.byte #%01100001;$80
-    ;.byte #%01000010;$80
-    ;.byte #%01000100;$80
-    ;.byte #%01001000;$70
-    ;.byte #%01010000;$42
-    ;.byte #%01100000;$42
-    ;.byte #%01000000;$42
-    ;.byte #%01000000;$3A
-    ;.byte #%00011100;$38
-    ;.byte #%11111000;$36
     
     ;pernas
    	.byte #%11110111;$70
@@ -378,14 +367,6 @@ P0Bitmap:
 
 P1Bitmap:
     .byte #%00000000;$80
-    ;.byte #%10000110;$80
-    ;.byte #%01000010;$80
-    ;.byte #%00100010;$80
-    ;.byte #%00010010;$70
-    ;.byte #%00001010;$42
-    ;.byte #%00000110;$42
-    ;.byte #%00000010;$42
-    ;.byte #%00000010;$3A
     
      ;pernas
    	.byte #%11101111;$80
@@ -422,14 +403,6 @@ P1Bitmap:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Color:
     .byte #$00;
-    ;.byte #$80;
-    ;.byte #$80;
-    ;.byte #$80;
-    ;.byte #$70;
-    ;.byte #$42;
-    ;.byte #$42;
-    ;.byte #$42;
-    ;.byte #$3A;
 
     ;cor das pernas
     .byte #$70;
@@ -463,14 +436,6 @@ P0Color:
 
 P1Color:
     .byte #$00;
-    ;.byte #$80;
-    ;.byte #$80;
-    ;.byte #$80;
-    ;.byte #$70;
-    ;.byte #$42;
-    ;.byte #$42;
-    ;.byte #$42;
-    ;.byte #$3A;
     
     ;cor das pernas
     .byte #$70;
