@@ -1,2 +1,2 @@
-# atari-game
+# Hockey Game
 Jogo feito em assembly para a disciplina de Interface Hardware-Software.

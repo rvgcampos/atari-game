@@ -1,22 +1,31 @@
 	processor 6502
-    include "vcs.h"
-    include "macro.h"  
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Arquivos requeridos com registradores do VCS e com algumas macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+    include "vcs.h"
+    include "macro.h" 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Segmento com variaveis não inicializadas
 ;;; Memória varia de $80 ate $FF
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     seg.u Variables
     org $80
 P0XPos byte                 ; Player 0 - eixo-x 
 P1XPos byte                 ; Player 1 - eixo-x 
 P0YPos byte                 ; Player 0 - eixo-y 
 P1YPos byte                 ; Player 1 - eixo-y 
-PlayerHeight byte           ; Altura dos Players 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Definição de constantes
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PLAYER0_HEIGHT = 24          ; Altura do sprite do player 0
+PLAYER1_HEIGHT = 24          ; Altura do sprite do player 0
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Começo da ROM (o jogo em si) em $F000
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     seg code
     org $F000     
 
@@ -29,28 +38,43 @@ Start:
     ldx #$C6
     stx COLUPF              ; Cor do playfield (Verde)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Iniciar Variáveis
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda #30
     sta P0XPos     
 
     lda #110
     sta P1XPos    
     
-    lda #30
+    lda #10
     sta P0YPos     
 
-    lda #110
+    lda #50
     sta P1YPos     
-
-    lda #24
-    sta PlayerHeight
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Renderizar o frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NextFrame:
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Setando eixo-x do Player 0 e Player 1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    lda P0XPos
+    ldy #0
+    jsr SetObjectXPos        ; Setando a posição horizontal do Player 0
+
+    lda P1XPos
+    ldy #1
+    jsr SetObjectXPos        ; Setando a posição horizontal do Player 1
+
+    sta WSYNC
+    sta HMOVE                ; Aplica a posição horizontal
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Desenhar VSYNC e VBLANK
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda #2
     sta VBLANK               ; Setando VBLANK on
     sta VSYNC                ; Setando VSYNC on
@@ -59,84 +83,30 @@ NextFrame:
 ;;; VSYNC (3 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     REPEAT 3
-        sta WSYNC  ; first three VSYNC scanlines
+        sta WSYNC  
     REPEND
     lda #0
-    sta VSYNC      ; turn VSYNC off
+    sta VSYNC      ; Desliga VSYNC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; VBLANK (30 linhas)
-;;; Setar posição inicial do sprite enquanto estivermos no VBLANK
+;;; VBLANK (37 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    lda P0XPos     ; Registrador A contém a posição no eixo-x desejada
-    and #$7F       ; Operação AND com $7 para o valor ser positivo
-    sta WSYNC      ; Espera scanline
-    sta HMCLR      ; Limpa valores de posições horizontais
-    sec            ; Setando a flag de carry antes da subtração
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Posicionando Player 0 no eixo-x
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-DivideLoop:
-    sbc #15        ; Subtrai 15 do do registrador A
-    bcs DivideLoop ; Faz o loop enquanto a flag de carry está setada (ajuste GROSSO)
-
-    eor #7         ; Ajusta o resto (da divisão) pra ficar entre -8 e 7 (ajuste FINO)
-    asl            ; Operação de shift pois o registrador HMP0 apenas usa 4 bits
-    asl
-    asl
-    asl
-    sta HMP0       ; (Ajuste FINO)
-    sta RESP0      ; 
-    sta WSYNC      ; Espera scanline
-    sta HMOVE      ; Aplica a posição fina no registrador
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    lda P1XPos     ; Registrador A contém a posição no eixo-x desejada
-    and #$7F       ; Operação AND com $7 para o valor ser positivo
-    sta WSYNC      ; Espera scanline
-    sta HMCLR      ; Limpa valores de posições horizontais
-    sec            ; Setando a flag de carry antes da subtração
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Posicionando Player 1 no eixo-x
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-DivideLoop1:
-    sbc #15         ; Subtrai 15 do do registrador A
-    bcs DivideLoop1 ; Faz o loop enquanto a flag de carry está setada (ajuste GROSSO)
-
-    eor #7         ; Ajusta o resto (da divisão) pra ficar entre -8 e 7 (ajuste FINO)
-    asl            ; Operação de shift pois o registrador HMP0 apenas usa 4 bits
-    asl
-    asl
-    asl
-    sta HMP1       ; (Ajuste FINO)
-    sta RESP1      ; 
-    sta WSYNC      ; Espera scanline
-    sta HMOVE      ; Aplica a posição fina no registrador
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Setar as próximas 35 linhas do VBLANK
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    REPEAT 33
+    REPEAT 37
         sta WSYNC
     REPEND
     lda #0
     sta VBLANK     ; Desliga VBLANK
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Alterando o registrador CTRLPF para permitir a reflexão do playfield 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ldx #%00000001 
     stx CTRLPF
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scanlines Principais (192 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    ; Pulando 14 linhas, ou seja, tornando as preto (14 linhas)
+    ; Pulando 14 linhas, ou seja, tornando as cinza (Background) (14 linhas)
     ldx #0
     stx PF0
     stx PF1
@@ -145,7 +115,7 @@ DivideLoop1:
        sta WSYNC   
     REPEND
 
-    ; Parte superior do playfield (7 linhas)
+    ; Parte superior do playfield (Verde) (7 linhas)
     ldx #%11100000
     stx PF0
     ldx #%11111111
@@ -155,47 +125,50 @@ DivideLoop1:
         sta WSYNC
     REPEND
 
-    ; Lateral do playfield (75 linhas)
+    ; Lateral do playfield (Verde) e Players (150 linhas)
     ldx #%00100000
     stx PF0
     ldx #%00000000
     stx PF1
     ldx #%10000000
     stx PF2
-    REPEAT 75
-        sta WSYNC
-    REPEND
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Desenhando os players no eixo-x
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    
-    ldy #24 ; Tamanho dos sprites
-DrawBitmap:
-    lda P0Bitmap,Y ; Carrega o bitmap do Player 0
-    sta GRP0       ; Armazena no registrador de graficos do Player 0
-    lda P0Color,Y  ; Carrega a cor do Player 0
-    sta COLUP0     ; Armazena no registrador de cor do Player 0
+    ldx #75                  ; 2-scanline kernel
+.GameLineLoop:
+.AreWeInsideP0Sprite:
+    txa                      ; Transferir X para A
+    sec                      ; Setando carry flag antes da subtração
+    sbc P0YPos               ; Subtrai de A o eixo-y do Player 0
+    cmp PLAYER0_HEIGHT       ; Verifica se já chegou na altura correta para começar a desenhar o sprite
+    bcc .DesenhaSpriteP0     ; Se chegou, chama DesenhaSpriteP0
+    lda #0                   ; Caso não, indice = 0, imprime tudo preto
+.DesenhaSpriteP0:
+    tay                      ; Transfere A para Y
+    lda P0Bitmap,Y           ; Carrega em A o bitmap do Player 0
+    sta WSYNC                ; Espera scanline
+    sta GRP0                 ; Habilita gráficos do Player 0
+    lda P0Color,Y            ; Carrega em A as cores do Player 0
+    sta COLUP0               ; Define as cores do Player 0
 
-    lda P1Bitmap,Y ; Carrega o bitmap do Player 1
-    sta GRP1       ; Armazena no registrador de graficos do Player 1
-    lda P1Color,Y  ; Carrega a cor do Player 1
-    sta COLUP1     ; Armazena no registrador de cor do Player 0
+.AreWeInsideP1Sprite:
+    txa                      ; Transferir X para A
+    sec                      ; Setando carry flag antes da subtração
+    sbc P1YPos               ; Subtrai de A o eixo-y do Player 1
+    cmp PLAYER1_HEIGHT       ; Verifica se já chegou na altura correta para começar a desenhar o sprite
+    bcc .DesenhaSpriteP1     ; Se chegou, chama DesenhaSpriteP1
+    lda #0                   ; Caso não, indice = 0, imprime tudo preto
+.DesenhaSpriteP1:
+    tay                      ; Transfere A para Y
+    lda P1Bitmap,Y           ; Carrega em A o bitmap do Player 1
+    sta WSYNC                ; Espera scanline
+    sta GRP1                 ; Habilita gráficos do Player 1
+    lda P1Color,Y            ; Carrega em A as cores do Player 1
+    sta COLUP1               ; Define as cores do Player 1
 
-    sta WSYNC      ; Espera próxima linha
+    dex                      ; X--
+    bne .GameLineLoop        ; Repete até imprimir as (75 linhas)
 
-    dey
-    bne DrawBitmap ; Repete próxima linha até terminar de desenhar
-
-    lda #0
-    sta GRP0       ; Desabilitar gráficos do player 0
-    sta GRP1       ; Desabilitar gráficos do player 1
-
-    REPEAT 66
-        sta WSYNC
-    REPEND
-
-    ; Parte inferior do playfield (7 linhas)
+    ; Parte inferior do playfield (Verde) (7 linhas)
     ldx #%11100000
     stx PF0
     ldx #%11111111
@@ -205,7 +178,7 @@ DrawBitmap:
         sta WSYNC
     REPEND
 
-    ; Pulando 14 linhas, ou seja, tornando as preto (14 linhas)
+    ; Pulando 14 linhas, ou seja, tornando as cinza (14 linhas)
     ldx #0
     stx PF0
     stx PF1
@@ -283,10 +256,33 @@ CheckP1Right:
 
 NoInput1:
     
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Pular para o proximo frame 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
     jmp NextFrame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Subroutina para lidar com a posição fina no eixo-x
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; A guarda a posição no eixo-x
+;;; Y é o objeto (0:player0, 1:player1, 2:missile0, 3:missile1, 4:ball)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+SetObjectXPos subroutine
+    sta WSYNC                ; Começa uma scanline
+    sec                      ; Setar carry flag
+.Div15Loop
+    sbc #15                  ; Subtrai 15 do registrador A
+    bcs .Div15Loop           ; Loop até carry flag ficar limpa
+    eor #7                   ; Torna o range entre -8 to 7
+    asl
+    asl
+    asl
+    asl                      ; 4 shift lefts para obter apenas 4 bits mais significativos
+    sta HMP0,Y               ; Armazena a posição "fina" em HMxx
+    sta RESP0,Y              ; Fixa a posição do objeto 
+    rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lookup table para os bitmaps dos players
