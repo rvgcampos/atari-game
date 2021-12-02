@@ -197,6 +197,8 @@ NextFrame:
     REPEND
     lda #0
     sta VBLANK
+    
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Input para o player 0
@@ -255,15 +257,36 @@ CheckP1Right:
     inc P1XPos
 
 NoInput1:
+
+CheckCollisionP0PF:
+    lda #%10000000
+    bit CXP0FB
+    bne .CollisionP0PF
+    jmp EndCollisionCheck
+
+.CollisionP0PF:
+    dec P0XPos
+    dec P0YPos
+CheckCollisionP1PF:
+    lda #%10000000
+    bit CXP1FB
+    bne .CollisionP1PF
+    jmp EndCollisionCheck
+
+.CollisionP1PF:
+    inc P1XPos
+    inc P1YPos
     
+EndCollisionCheck:
+    sta CXCLR
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Pular para o proximo frame 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
     jmp NextFrame
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Subroutina para lidar com a posição fina no eixo-x
+;;; Subrotina para lidar com a posição fina no eixo-x
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; A guarda a posição no eixo-x
 ;;; Y é o objeto (0:player0, 1:player1, 2:missile0, 3:missile1, 4:ball)
