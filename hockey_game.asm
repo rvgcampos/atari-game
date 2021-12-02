@@ -16,13 +16,22 @@ P0XPos byte                 ; Player 0 - eixo-x
 P1XPos byte                 ; Player 1 - eixo-x 
 P0YPos byte                 ; Player 0 - eixo-y 
 P1YPos byte                 ; Player 1 - eixo-y 
+Score1  byte		    ;digitos pra scoreP0 
+Score2  byte           	    ;digitos pra scoreP1
+Timer  byte		    ;digitos pra timer
+Temp   byte		    ;auxiliar para armazenar o valor do score
+UnidadeDigitos	word	     ;digitos referentes das unidades
+DezenaDigitos	word	     ;digitos referentes as dezenas
+Score1Sprite   byte            ;arma
+Score2Sprite   byte
+TimerSprite  byte
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definição de constantes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PLAYER0_HEIGHT = 24          ; Altura do sprite do player 0
 PLAYER1_HEIGHT = 24          ; Altura do sprite do player 0
-
+DIGITOS_HEIGHT = 5	     ; Altura do sprite dos digitos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Começo da ROM (o jogo em si) em $F000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38,8 +47,8 @@ Start:
     ldx #$C6
     stx COLUPF              ; Cor do playfield (Verde)
     
-    ldy #%00000010          ; CTRLPF D1 cor esquerda  P0 e direita P1 (score)
-    sty CTRLPF
+  ; ldy #%00000010          ; CTRLPF D1 cor esquerda  P0 e direita P1 (score)
+  ; sty CTRLPF
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Iniciar Variáveis
@@ -54,7 +63,14 @@ Start:
     sta P0YPos     
 
     lda #50
-    sta P1YPos     
+    sta P1YPos  
+    
+    lda #01
+    sta Score1                ; Score1 = 0
+    lda #02
+    sta Score2		      ; Score2 = 0
+    lda #03
+    sta Timer                 ; Timer = 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Renderizar o frame
@@ -62,7 +78,7 @@ Start:
 NextFrame:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Setando eixo-x do Player 0 e Player 1
+;;; Setando eixo-x do Player 0 e Player 1 e Digitos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda P0XPos
     ldy #0
@@ -71,6 +87,8 @@ NextFrame:
     lda P1XPos
     ldy #1
     jsr SetObjectXPos        ; Setando a posição horizontal do Player 1
+    
+    jsr CalculateDigitOffset  ; calculo dos digitos do score
 
     sta WSYNC
     sta HMOVE                ; Aplica a posição horizontal
@@ -94,7 +112,7 @@ NextFrame:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; VBLANK (37 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    REPEAT 37
+    REPEAT 33;;;;;;;;;;;;;;;;;;;;;;;33 bote 33
         sta WSYNC
     REPEND
     lda #0
@@ -103,7 +121,7 @@ NextFrame:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Alterando o registrador CTRLPF para permitir a reflexão do playfield 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ldx #%00000001 
+   ldx #%00000001 
     stx CTRLPF
     
     
@@ -111,20 +129,111 @@ NextFrame:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Score
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+   lda #0                  
+    sta PF0
+    sta PF1
+    sta PF2
+    sta GRP0
+    sta GRP1
+    sta CTRLPF
+    ;sta COLUBK
+   ; lda #$1E
+  ;  sta COLUBK
+    ;lda #$1C
+    ;sta COLUPF
+    ;lda #%00000000
+    ;sta CTRLPF
+    ;REPEAT 10
+     ;   sta WSYNC
+    ;REPEND
+    
+    ldx #DIGITOS_HEIGHT
+    
+.ScoreDigitLoop:
+    ldy DezenaDigitos      ; get the tens digit offset for the Score
+    lda Digitos,Y             ; load the bit pattern from lookup table
+    and #$F0                 ; mask/remove the graphics for the ones digit
+    sta Score1Sprite          ; save the score tens digit pattern in a variable
+
+    ldy UnidadeDigitos     ; get the ones digit offset for the Score
+    lda Digitos,Y             ; load the digit bit pattern from lookup table
+    and #$0F                 ; mask/remove the graphics for the tens digit
+    ora Score1Sprite          ; merge it with the saved tens digit sprite
+    sta Score1Sprite          ; and save it
+    sta WSYNC                ; wait for the end of scanline
+    sta PF1                  ; update the playfield to display the Score sprite
+   
+   
+   
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;2   
+    ldy DezenaDigitos      ; get the tens digit offset for the Score
+    lda Digitos,Y             ; load the bit pattern from lookup table
+    and #$F0                 ; mask/remove the graphics for the ones digit
+    sta Score2Sprite          ; save the score tens digit pattern in a variable
+
+    ldy UnidadeDigitos     ; get the ones digit offset for the Score
+    lda Digitos,Y             ; load the digit bit pattern from lookup table
+    and #$0F                 ; mask/remove the graphics for the tens digit
+    ora Score2Sprite          ; merge it with the saved tens digit sprite
+    sta Score2Sprite          ; and save it
+    sta WSYNC                ; wait for the end of scanline
+    sta PF1                  ; update the playfield to display the Score sprite
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+    ldy DezenaDigitos+1    ; get the left digit offset for the Timer
+    lda Digitos,Y             ; load the digit pattern from lookup table
+    and #$F0                 ; mask/remove the graphics for the ones digit
+    sta TimerSprite          ; save the timer tens digit pattern in a variable
+
+    ldy UnidadeDigitos+1    ; get the ones digit offset for the Timer
+    lda Digitos,Y             ; load digit pattern from the lookup table
+    and #$0F                 ; mask/remove the graphics for the tens digit
+    ora TimerSprite          ; merge with the saved tens digit graphics
+    sta TimerSprite          ; and save it
+
+    jsr Sleep12Cycles        ; wastes some cycles
+
+    sta PF1                  ; update the playfield for Timer display
+
+    ldy Score1Sprite          ; preload for the next scanline
+    sta WSYNC                ; wait for next scanline
+
+    sty PF1                  ; update playfield for the score display
+    inc DezenaDigitos
+    inc DezenaDigitos+1
+    inc UnidadeDigitos
+    inc UnidadeDigitos+1    ; increment all digits for the next line of data
+
+    jsr Sleep12Cycles        ; waste some cycles
+
+    dex                      ; X--
+    sta PF1                  ; update the playfield for the Timer display
+    bne .ScoreDigitLoop      ; if dex != 0, then branch to ScoreDigitLoop
+
+    sta WSYNC
+
+    lda #0
+    sta PF0
+    sta PF1
+    sta PF2
+    sta WSYNC
+    sta WSYNC
+    sta WSYNC
     
  
-ScoreLoop:
-    lda Numbers,Y
-    sta PF1
-    sta WSYNC
-    iny
-    cpy #10
-    bne ScoreLoop
+;ScoreLoop:
+ ;   lda Digitos,Y
+  ;  sta PF1
+   ; sta WSYNC
+    ;iny
+    ;cpy #10
+    ;bne ScoreLoop
 
     
-    REPEAT 
-        sta WSYNC
-    REPEND
+   ; REPEAT 
+    ;    sta WSYNC
+    ;REPEND
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scanlines Principais (192 linhas)
@@ -289,7 +398,7 @@ CheckCollisionP0PF:
 
 .CollisionP0PF:
     dec P0XPos
-
+    dec P0YPos
 CheckCollisionP1PF:
     lda #%10000000
     bit CXP1FB
@@ -298,6 +407,7 @@ CheckCollisionP1PF:
 
 .CollisionP1PF:
     inc P1XPos
+    inc P1YPos
     
 EndCollisionCheck:
     sta CXCLR
@@ -328,12 +438,64 @@ SetObjectXPos subroutine
     sta HMP0,Y               ; Armazena a posição "fina" em HMxx
     sta RESP0,Y              ; Fixa a posição do objeto 
     rts
+    
+    
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Subrotina para lidar com os digitos do Score
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CalculateDigitOffset subroutine
+    ldx #1                   ; X register is the loop counter
+.PrepareScoreLoop            ; this will loop twice, first X=1, and then X=0
 
+    lda Score1,X              ; load A with Timer (X=1) or Score (X=0)
+    and #$0F                 ; remove the tens digit by masking 4 bits 00001111
+    sta Temp                 ; save the value of A into Temp
+    asl                      ; shift left (it is now N*2)
+    asl                      ; shift left (it is now N*4)
+    adc Temp                 ; add the value saved in Temp (+N)
+    sta UnidadeDigitos,X    ; save A in OnesDigitOffset+1 or OnesDigitOffset
+
+    lda Score1,X              ; load A with Timer (X=1) or Score (X=0)
+    and #$F0                 ; remove the ones digit by masking 4 bits 11110000
+    lsr                      ; shift right (it is now N/2)
+    lsr                      ; shift right (it is now N/4)
+    sta Temp                 ; save the value of A into Temp
+    lsr                      ; shift right (it is now N/8)
+    lsr                      ; shift right (it is now N/16)
+    adc Temp                 ; add the value saved in Temp (N/16+N/4)
+    sta DezenaDigitos,X    ; store A in TensDigitOffset+1 or TensDigitOffset
+
+    dex                      ; X--
+    bpl .PrepareScoreLoop    ; while X >= 0, loop to pass a second time
+
+    rts
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Subroutine to waste 12 cycles
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; jsr takes 6 cycles
+;; rts takes 6 cycles
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Sleep12Cycles subroutine
+    rts   
+    
+ 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lookup table para os bitmaps dos players
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Bitmap:
     .byte #%00000000;$80
+    ;.byte #%01100001;$80
+    ;.byte #%01000010;$80
+    ;.byte #%01000100;$80
+    ;.byte #%01001000;$70
+    ;.byte #%01010000;$42
+    ;.byte #%01100000;$42
+    ;.byte #%01000000;$42
+    ;.byte #%01000000;$3A
+    ;.byte #%00011100;$38
+    ;.byte #%11111000;$36
     
     ;pernas
    	.byte #%11110111;$70
@@ -367,6 +529,14 @@ P0Bitmap:
 
 P1Bitmap:
     .byte #%00000000;$80
+    ;.byte #%10000110;$80
+    ;.byte #%01000010;$80
+    ;.byte #%00100010;$80
+    ;.byte #%00010010;$70
+    ;.byte #%00001010;$42
+    ;.byte #%00000110;$42
+    ;.byte #%00000010;$42
+    ;.byte #%00000010;$3A
     
      ;pernas
    	.byte #%11101111;$80
@@ -403,6 +573,14 @@ P1Bitmap:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Color:
     .byte #$00;
+    ;.byte #$80;
+    ;.byte #$80;
+    ;.byte #$80;
+    ;.byte #$70;
+    ;.byte #$42;
+    ;.byte #$42;
+    ;.byte #$42;
+    ;.byte #$3A;
 
     ;cor das pernas
     .byte #$70;
@@ -436,6 +614,14 @@ P0Color:
 
 P1Color:
     .byte #$00;
+    ;.byte #$80;
+    ;.byte #$80;
+    ;.byte #$80;
+    ;.byte #$70;
+    ;.byte #$42;
+    ;.byte #$42;
+    ;.byte #$42;
+    ;.byte #$3A;
     
     ;cor das pernas
     .byte #$70;
@@ -469,17 +655,114 @@ P1Color:
     
     
     
-Numbers:
-    .byte #%00001110   ; ########
-    .byte #%00001110   ; ########
-    .byte #%00000010   ;      ###
-    .byte #%00000010   ;      ###
-    .byte #%00001110   ; ########
-    .byte #%00001110   ; ########
-    .byte #%00001000   ; ###
-    .byte #%00001000   ; ###
-    .byte #%00001110   ; ########
-    .byte #%00001110   ; ########
+;Numbers:
+    ;.byte #%00001110   ; ########
+    ;.byte #%00001110   ; ########
+    ;.byte #%00000010   ;      ###
+    ;.byte #%00000010   ;      ###
+    ;.byte #%00001110   ; ########
+    ;.byte #%00001110   ; ########
+    ;.byte #%00001000   ; ###
+    ;.byte #%00001000   ; ###
+    ;.byte #%00001110   ; ########
+   ; .byte #%00001110   ; ########
+    
+Digitos:
+    .byte %01110111          ; ### ###
+    .byte %01010101          ; # # # #
+    .byte %01010101          ; # # # #
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+
+    .byte %01110111          ; ### ###
+    .byte %00010001          ;   #   #
+    .byte %01110111          ; ### ###
+    .byte %01000100          ; #   #
+    .byte %01110111          ; ### ###
+
+    .byte %01110111          ; ### ###
+    .byte %00010001          ;   #   #
+    .byte %00110011          ;  ##  ##
+    .byte %00010001          ;   #   #
+    .byte %01110111          ; ### ###
+
+    .byte %01010101          ; # # # #
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+
+    .byte %01110111          ; ### ###
+    .byte %01000100          ; #   #
+    .byte %01110111          ; ### ###
+    .byte %00010001          ;   #   #
+    .byte %01110111          ; ### ###
+
+    .byte %01110111          ; ### ###
+    .byte %01000100          ; #   #
+    .byte %01110111          ; ### ###
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+
+    .byte %01110111          ; ### ###
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+    .byte %00010001          ;   #   #
+
+    .byte %01110111          ; ### ###
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+
+    .byte %01110111          ; ### ###
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+    .byte %00010001          ;   #   #
+    .byte %01110111          ; ### ###
+
+    .byte %00100010          ;  #   #
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+    .byte %01010101          ; # # # #
+    .byte %01010101          ; # # # #
+
+    .byte %01110111          ; ### ###
+    .byte %01010101          ; # # # #
+    .byte %01100110          ; ##  ##
+    .byte %01010101          ; # # # #
+    .byte %01110111          ; ### ###
+
+    .byte %01110111          ; ### ###
+    .byte %01000100          ; #   #
+    .byte %01000100          ; #   #
+    .byte %01000100          ; #   #
+    .byte %01110111          ; ### ###
+
+    .byte %01100110          ; ##  ##
+    .byte %01010101          ; # # # #
+    .byte %01010101          ; # # # #
+    .byte %01010101          ; # # # #
+    .byte %01100110          ; ##  ##
+
+    .byte %01110111          ; ### ###
+    .byte %01000100          ; #   #
+    .byte %01110111          ; ### ###
+    .byte %01000100          ; #   #
+    .byte %01110111          ; ### ###
+
+    .byte %01110111          ; ### ###
+    .byte %01000100          ; #   #
+    .byte %01100110          ; ##  ##
+    .byte %01000100          ; #   #
+    .byte %01000100          ; #   #
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Completar a ROM para 4KB
