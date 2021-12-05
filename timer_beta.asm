@@ -67,7 +67,7 @@ Start:
     
     lda #01
     sta Score1                ; Score1 = 0
-    lda #02
+    lda #14
     sta Score2		      ; Score2 = 0
     lda #03
     sta Timer                 ; Timer = 0
