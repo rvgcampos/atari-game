@@ -21,8 +21,8 @@ ScoreP1 byte                ; Placar do Player 1
 Temp byte                   ; Variável temporária para guardar valores do placar
 OnesDigitOffset word        ; lookup table offset for the score 1's digit
 TensDigitOffset word        ; lookup table offset for the score 10's digit
-ScoreP0Sprite               ; Store the sprite bit pattern for the score
-ScoreP1Sprite               ; Store the sprite bit pattern for the timer
+ScoreP0Sprite byte               ; Store the sprite bit pattern for the score
+ScoreP1Sprite    byte           ; Store the sprite bit pattern for the timer
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definição de constantes
@@ -55,9 +55,9 @@ Start:
     lda #50
     sta P1YPos     
 
-    lda #2
+    lda #6
     sta ScoreP0
-    lda #3
+    lda #1
     sta ScoreP1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -123,8 +123,11 @@ NextFrame:
     lda #$1E                    ; Amerelo
     sta COLUPF
     
-    ldx #DIGITS_HEIGHT          ; X guarda o valor de 5
+    
+    
+    ldx #DIGITS_HEIGHT         ; X guarda o valor de 5
 .ScoreDigitLoop:
+
     ldy TensDigitOffset         ; get the tens digit offset for the Score
     lda Digits,Y                ; load the bit pattern from lookup table
     and #$F0                    ; Mask/remove the graphics for the ones digit
@@ -166,8 +169,10 @@ NextFrame:
 
     dex                         ; X--
     sta PF1                     ; update the playfield for the Timer display
+   
+    
     bne .ScoreDigitLoop         ; Se dex != 0, então pule para ScoreDigitLoop
-
+    
     sta WSYNC
 
     lda #0
@@ -176,7 +181,7 @@ NextFrame:
     sta PF2
     sta WSYNC
     sta WSYNC
-    sta WSYNC
+    sta WSYNC  
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scanlines Principais (192 linhas)
