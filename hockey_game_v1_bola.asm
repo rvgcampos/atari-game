@@ -26,6 +26,7 @@ ScoreP1Sprite    byte           ; Store the sprite bit pattern for the timer
 BallXPos byte
 BallYPos byte
 IndoDireita byte
+IndoCima byte
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definição de constantes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,9 +58,9 @@ Start:
     lda #50
     sta P1YPos     
 
-    lda #6
+    lda #0
     sta ScoreP0
-    lda #1
+    lda #0
     sta ScoreP1
 
     lda #70
@@ -70,6 +71,9 @@ Start:
     
     lda #1
     sta IndoDireita
+    
+    lda #0
+    sta IndoCima
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; MACRO
@@ -394,7 +398,38 @@ CheckP1Right:
     inc P1XPos
 
 NoInput1:
+
+    lda BallYPos
+    cmp #85
+    bpl MovimentoCima
+    lda BallYPos
+    cmp #3
+    bmi MovimentoBaixo
+    jmp MovimentoVertical
+   
+MovimentoCima:
+    dec IndoCima
+    jmp MovimentoVertical      
     
+MovimentoBaixo:
+    inc IndoCima
+    jmp MovimentoVertical
+    
+MovimentoVertical:
+    lda IndoCima
+    cmp #1
+    beq PlayfieldCima
+    jmp PlayfieldBaixo
+    
+PlayfieldCima:
+    inc BallYPos
+    jmp Nada1
+PlayfieldBaixo:
+    dec BallYPos
+Nada1:
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
     lda BallXPos
     cmp #134
     bpl MovimentoDireita
@@ -406,10 +441,12 @@ NoInput1:
     ;dec BallYPos
 MovimentoDireita:
     dec IndoDireita
+    inc ScoreP1
     jmp Movimento      
     
 MovimentoEsquerda:
     inc IndoDireita
+    inc ScoreP0
     jmp Movimento
     
 Movimento:
