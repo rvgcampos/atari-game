@@ -480,12 +480,14 @@ ChecarEsquerda:
 MovimentoDireita:
     ;dec IndoDireita
     inc ScoreP1
+    jsr GenerateSoundGol
     jmp PosicaoInicial
     ;jmp Movimento      
     
 MovimentoEsquerda:
     ;inc IndoDireita
     inc ScoreP0
+    jsr GenerateSoundGol
     jmp PosicaoInicial
     ;jmp Movimento
     
@@ -626,6 +628,27 @@ GenerateSound subroutine
     sta AUDF0                ; set the audio frequency/pitch register
     
     rts
+    
+GenerateSoundGol subroutine
+    lda #15
+    sta AUDV0                ; set the audio volume register
+
+    lda #5
+    sta AUDC1                ; set the audio control register to white noise
+
+    lda BallXPos              ; loads the accumulator with the jet y-position
+    lsr
+    lsr
+    lsr                      ; divide the accumulator by 8 (using right-shifts)
+    sta Temp                 ; save the Y/8 value in a temp variable
+    lda #31
+    sec
+    sbc Temp                 ; subtract 31-(Y/8)
+    lda #15
+    sta AUDF1                ; set the audio frequency/pitch register
+    
+    rts              ; set the audio frequency/pitch register
+    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lookup table para os digitos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
