@@ -940,14 +940,14 @@ P1Color:
     .byte #$70;
     
     ;cor do corpo
-    .byte #$30;
-    .byte #$30;
-    .byte #$30;
-    .byte #$30;
-    .byte #$30;
-    .byte #$30;
-    .byte #$30;
-    .byte #$30;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
     
     ;cor da cabeça
     .byte #$36;
