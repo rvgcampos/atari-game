@@ -506,12 +506,14 @@ ChecarEsquerda:
 MovimentoDireita:
     ;dec IndoDireita
     inc ScoreP1
+    jsr GenerateSoundGol
     jmp PosicaoInicial
     ;jmp Movimento      
     
 MovimentoEsquerda:
     ;inc IndoDireita
     inc ScoreP0
+    jsr GenerateSoundGol
     jmp PosicaoInicial
     ;jmp Movimento
     
@@ -735,6 +737,25 @@ GenerateSoundGame subroutine
     sta AUDC1               ; set the audio control register to white noise
 
     rts              ; set the audio frequency/pitch register 
+    
+GenerateSoundGol subroutine
+
+	LDA #3
+	STA AUDV0       
+	LDA #13
+	STA AUDC0
+        lda #4
+        sta AUDF0
+        bne n1	   
+    rts    
+n1  
+	LDA #9
+	STA AUDV0       
+	LDA #143
+	STA AUDC0
+        lda #9
+        sta AUDF0	   
+    rts 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lookup table para os digitos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -971,8 +992,8 @@ P1Color:
     .byte #$36;
     .byte #$36;
     .byte #$36;
-    .byte #$30;
-    .byte #$30;
+    .byte #$a4;
+    .byte #$a4;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Completar a ROM para 4KB
