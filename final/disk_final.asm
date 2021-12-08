@@ -21,33 +21,32 @@ ScoreP1 byte                ; Placar do Player 1
 Temp byte                   ; Variável temporária para guardar valores do placar
 OnesDigitOffset word        ; lookup table offset for the score 1's digit
 TensDigitOffset word        ; lookup table offset for the score 10's digit
-ScoreP0Sprite byte               ; Store the sprite bit pattern for the score
-ScoreP1Sprite    byte           ; Store the sprite bit pattern for the timer
-BallXPos byte
-BallYPos byte
-IndoDireita byte
-IndoCima byte
+ScoreP0Sprite byte          ; Guarda o sprite do Placar do Player0
+ScoreP1Sprite    byte       ; Guarda o sprite do Placar do Player1
+BallXPos byte               ; Bola - eixo-x
+BallYPos byte               ; Bola - eixo-y
+IndoDireita byte            ; Flag para indicar se a bola está indo para a direita ou não (1=indo para direita, 0=indo para esquerda)
+IndoCima byte               ; Flag para indicar se a bola está indo para cima ou não (1=indo para cima, 0=indo para baixo)
 Random byte
 Random1 byte
 velocidadex byte
-BackgroundColor byte
-CharAnimOffset byte
+CharAnimOffset0 byte
 CharAnimOffset1 byte
-ContadorSom byte
-TempoVitoria byte
+ContadorSom byte            ; Variavel pra percorrer a tabela de sons
+Player1Venceu byte          ; Flag para indicar se o Player0 Venceu
+Player2Venceu byte          ; Flag para indicar se o Player1 Venceu
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definição de constantes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-PLAYER0_HEIGHT = 24          ; Altura do sprite do player 0
-PLAYER1_HEIGHT = 24          ; Altura do sprite do player 0
-DIGITS_HEIGHT = 5             ; Altura do 'sprite' dos digitos
+PLAYER0_HEIGHT = 24         ; Altura do sprite do player 0
+PLAYER1_HEIGHT = 24         ; Altura do sprite do player 0
+DIGITS_HEIGHT = 5           ; Altura do 'sprite' dos digitos
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Começo da ROM (o jogo em si) em $F000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     seg code
     org $F000     
-
 Start:
 	CLEAN_START             ; Limpar a memória e registradores da TIA
 
@@ -60,10 +59,10 @@ Start:
     lda #110
     sta P1XPos    
     
-    lda #10
+    lda #45
     sta P0YPos     
 
-    lda #50
+    lda #10
     sta P1YPos     
 
     lda #0
@@ -74,7 +73,7 @@ Start:
     lda #70
     sta BallXPos 
 
-    lda #80
+    lda #50
     sta BallYPos  
     
     lda #1
@@ -89,14 +88,14 @@ Start:
     lda #%11010100
     sta Random1
     
-    lda #$08
-    sta BackgroundColor
-    
     lda #0
     sta ContadorSom
 
     lda #0
-    sta TempoVitoria
+    sta Player1Venceu
+
+    lda #0
+    sta Player2Venceu
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; MACRO
@@ -104,10 +103,10 @@ Start:
     MAC DRAW_BALL
         lda #0
     	cpx BallYPos
-        bne .SkipMissileDraw
+        bne .SkipBallDraw
 .DrawMissile:
 	lda #%00000010
-.SkipMissileDraw
+.SkipBallDraw
         sta ENABL        
     ENDM
 
@@ -129,7 +128,7 @@ NextFrame:
         sta WSYNC  
     REPEND
     lda #0
-    sta VSYNC      ; Desliga VSYNC
+    sta VSYNC                ; Desliga VSYNC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; VBLANK (37 linhas)
@@ -141,7 +140,7 @@ NextFrame:
     REPEND
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Setando eixo-x do Player 0 e Player 1 (VBLANK)
+;;; Setando eixo-x do Player 0, Player 1, Bola (durante VBLANK)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda P0XPos
     ldy #0
@@ -156,8 +155,7 @@ NextFrame:
     jsr SetObjectXPos
 
     jsr CalculateDigitOffset ; Calcular o placar
-    jsr GenerateSoundGame
-
+    jsr GenerateSoundGame    ; Gerando o som do jogo
 
     sta WSYNC
     sta HMOVE                ; Aplica a posição horizontal
@@ -165,6 +163,67 @@ NextFrame:
     lda #0
     sta VBLANK               ; Desliga VBLANK
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Mostrar tela de vitoria (se houver)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ldy Player1Venceu            ; Verifica se Player0 Venceu
+    cpy #1   
+    beq TelaVitoriaPlayer0       ; Se sim, vai mostra a tela de vitoria do Player0
+    jmp VerificarPlayer1Venceu   ; Caso contrario, verifica se Player1 venceu
+TelaVitoriaPlayer0:
+    lda #$1E                 ; Amarelo
+    sta COLUP0
+    lda #$00                 ; Preto
+    sta COLUBK
+    lda #0
+    sta AUDV0
+
+    ldx #95
+MensagemVitoriaPlayer0:
+    lda MensagemVitoriaP0,X
+    sta WSYNC 
+    sta WSYNC
+    sta GRP0
+    dex					
+    bne MensagemVitoriaPlayer0 
+    
+    lda #0                    ; Preto
+    sta COLUP0
+    REPEAT 2
+        sta WSYNC
+    REPEND
+
+    jmp IrParaVblank
+VerificarPlayer1Venceu:
+    ldy Player2Venceu
+    cpy #1
+    beq TelaVitoriaPlayer1
+    jmp Placar                ; Se Player1 não venceu, então exibe a tela do jogo normalmente, começando pelo placar
+TelaVitoriaPlayer1:
+    lda #$1E                  ; Amarelo
+    sta COLUP1
+    lda #$00                  ; Preto
+    sta COLUBK
+    lda #0
+    sta AUDV0
+
+    ldx #95
+MensagemVitoriaPlayer1:
+    lda MensagemVitoriaP1,X
+    sta WSYNC 
+    sta WSYNC
+    sta GRP1
+    dex					
+    bne MensagemVitoriaPlayer1 
+    
+    lda #0
+    sta COLUP1
+    REPEAT 2
+        sta WSYNC
+    REPEND
+
+    jmp IrParaVblank
+Placar:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Desenhar o placar (20 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
@@ -177,56 +236,53 @@ NextFrame:
     sta COLUBK
     sta CTRLPF
 
-    lda #$1E                    ; Amerelo
+    lda #$1E                    ; Amarelo
     sta COLUPF
     
-    ldx #DIGITS_HEIGHT         ; X guarda o valor de 5
+    ldx #DIGITS_HEIGHT          ; X guarda o valor de 5
 .ScoreDigitLoop:
+    ldy TensDigitOffset         
+    lda Digits,Y                
+    and #$F0                    
+    sta ScoreP0Sprite           
 
-    ldy TensDigitOffset         ; get the tens digit offset for the Score
-    lda Digits,Y                ; load the bit pattern from lookup table
-    and #$F0                    ; Mask/remove the graphics for the ones digit
-    sta ScoreP0Sprite           ; Save the score tens digit pattern in variable
+    ldy OnesDigitOffset         
+    lda Digits,Y                
+    and #$0F                    
+    ora ScoreP0Sprite           
+    sta ScoreP0Sprite           
+    sta WSYNC                   
+    sta PF1                     
 
-    ldy OnesDigitOffset         ; get the ones digit offset for the Score
-    lda Digits,Y                ; load the bit pattern from lookup table
-    and #$0F                    ; Mask/remove the graphics for the tens digit
-    ora ScoreP0Sprite           ; merge it with the saved tens digit sprite
-    sta ScoreP0Sprite           ; and saved it
-    sta WSYNC                   ; wait for the end of scanline
-    sta PF1                     ; update the playfield to display for the Score Sprite
+    ldy TensDigitOffset+1       
+    lda Digits,Y                
+    and #$F0                    
+    sta ScoreP1Sprite           
 
-    ldy TensDigitOffset+1       ; get the left digit of Player 1
-    lda Digits,Y                ; load the bit pattern from lookup table
-    and #$F0                    ; Mask/remove the graphics for the ones digit
-    sta ScoreP1Sprite           ; Save the score tens digit pattern in variable
+    ldy OnesDigitOffset+1       
+    lda Digits,Y                
+    and #$0F                    
+    ora ScoreP1Sprite           
+    sta ScoreP1Sprite           
 
-    ldy OnesDigitOffset+1         ; get the ones digit offset for the Score
-    lda Digits,Y                ; load the bit pattern from lookup table
-    and #$0F                    ; Mask/remove the graphics for the tens digit
-    ora ScoreP1Sprite           ; merge it with the saved tens digit sprite
-    sta ScoreP1Sprite           ; and saved it
+    jsr Sleep12Cycles           
 
-    jsr Sleep12Cycles           ; waste some cycles
+    sta PF1                     
 
-    sta PF1                     ; update the playfield for Timer display
+    ldy ScoreP0Sprite           
+    sta WSYNC                   
 
-    ldy ScoreP0Sprite           ; preload for next scanline
-    sta WSYNC                   ; wait for next scanline
-
-    sty PF1                     ; update playfield for the score display
+    sty PF1                     
     inc TensDigitOffset
     inc TensDigitOffset+1
     inc OnesDigitOffset
     inc OnesDigitOffset+1
 
-    jsr Sleep12Cycles           ; waste some cycles
-
-    dex                         ; X--
-    sta PF1                     ; update the playfield for the Timer display
+    jsr Sleep12Cycles           
+    dex                         
+    sta PF1                     
     
-    bne .ScoreDigitLoop         ; Se dex != 0, então pule para ScoreDigitLoop
-    
+    bne .ScoreDigitLoop         
     sta WSYNC
 
     lda #0
@@ -236,40 +292,31 @@ NextFrame:
     sta WSYNC
     sta WSYNC
     sta WSYNC  
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scanlines Principais (192 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    ; Pulando 14 linhas, ou seja, tornando as cinza (Background) (14 linhas)
+    ; Pulando 14 linhas, ou seja, tornando as preto (Background) (14 linhas)
     ldx #0
     stx PF0
     stx PF1
     stx PF2 
     
     lda #0
-    sta AUDV0
-
-
+    sta AUDV0               ; Desligando o audio do canal 0
     
     ldx #$0E
-    stx COLUBK              ; Cor do background (Cinza)
+    stx COLUBK              ; Cor do background (Branco)
     ldx #$00
-    stx COLUPF              ; Cor do playfield (Verde)
+    stx COLUPF              ; Cor do playfield (Preto)
 
-    ; Mudança no background
-    ;ldx BackgroundColor
-    ;stx COLUBK              ; Cor do background (Cinza)
-    ;ldx #$C6
-    ;stx COLUPF              ; Cor do playfield (Verde)
-    ldx #%00100001 
+    ldx #%00100001          ; Mudando o tamanho da bola, e colocando o playfield para repetir
     stx CTRLPF
 
     REPEAT 3
-        sta WSYNC   
+        sta WSYNC           ; Desenhando algumas linhas em branco
     REPEND
 
-    ; Parte superior do playfield (Verde) (7 linhas)
+    ; Parte superior do playfield (Preto) (7 linhas)
     ldx #%11100000
     stx PF0
     ldx #%11111111
@@ -279,7 +326,7 @@ NextFrame:
         sta WSYNC
     REPEND
 
-    ; Lateral do playfield (Verde) e Players (150 linhas)
+    ; Lateral do playfield (Preto) e Players (140 linhas)
     ldx #%00100000
     stx PF0
     ldx #%00000000
@@ -287,10 +334,10 @@ NextFrame:
     ldx #%00000000
     stx PF2
 
-    ldx #84                  ; 2-scanline kernel
+    ldx #70                  ; 2-scanline kernel
 .GameLineLoop:
     DRAW_BALL
-.AreWeInsideP0Sprite:
+.AreWeInsideP0Sprite:        ; Desenhando o sprite do Player0
     txa                      ; Transferir X para A
     sec                      ; Setando carry flag antes da subtração
     sbc P0YPos               ; Subtrai de A o eixo-y do Player 0
@@ -299,16 +346,15 @@ NextFrame:
     lda #0                   ; Caso não, indice = 0, imprime tudo preto
 .DesenhaSpriteP0:
     clc
-    adc CharAnimOffset	
+    adc CharAnimOffset0	
     tay                      ; Transfere A para Y
     lda P0Bitmap,Y           ; Carrega em A o bitmap do Player 0
     sta WSYNC                ; Espera scanline
     sta GRP0                 ; Habilita gráficos do Player 0
     lda P0Color,Y            ; Carrega em A as cores do Player 0
     sta COLUP0               ; Define as cores do Player 0
-    
 
-.AreWeInsideP1Sprite:   	
+.AreWeInsideP1Sprite:        ; Desenhando o sprite do Player 1	
     txa                      ; Transferir X para A
     sec                      ; Setando carry flag antes da subtração
     sbc P1YPos               ; Subtrai de A o eixo-y do Player 1
@@ -329,11 +375,11 @@ NextFrame:
     bne .GameLineLoop        ; Repete até imprimir as (75 linhas)
     
     lda #0
-    sta CharAnimOffset
+    sta CharAnimOffset0
     lda #0
     sta CharAnimOffset1
 
-    ; Parte inferior do playfield (Verde) (7 linhas)
+    ; Parte inferior do playfield (Preto) (7 linhas)
     ldx #%11100000
     stx PF0
     ldx #%11111111
@@ -343,7 +389,7 @@ NextFrame:
         sta WSYNC
     REPEND
 
-    ; Pulando 14 linhas, ou seja, tornando as cinza (14 linhas)
+    ; Pulando 3 linhas, ou seja, tornando as brancas (134 linhas)
     ldx #0
     stx PF0
     stx PF1
@@ -352,6 +398,163 @@ NextFrame:
         sta WSYNC
     REPEND
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Escrevend o nome
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+    lda #$00                    ; Amarelo
+    sta COLUPF
+
+    lda #%00000000              ; Tirar a reflexão do playfield
+    sta CTRLPF
+    
+    ; PRIMEIRA LINHA
+    REPEAT 2
+        ldx #%01100000
+        stx PF0
+        ldx #%01001101
+        stx PF1
+        ldx #%00000010
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%11110000
+        stx PF0
+        ldx #%00010001
+        stx PF1
+        ldx #%00010101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ; SEGUNDA LINHA
+    REPEAT 2  
+        ldx #%00100000
+        stx PF0
+        ldx #%11101001
+        stx PF1
+        ldx #%00000010
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%10100000
+        stx PF0
+        ldx #%00010001
+        stx PF1
+        ldx #%00001100
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ; TERCEIRA LINHA
+    REPEAT 2
+        ldx #%01100000
+        stx PF0
+        ldx #%10101100
+        stx PF1
+        ldx #%00000001
+        stx PF2
+        
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%10100000
+        stx PF0
+        ldx #%01111101
+        stx PF1
+        ldx #%00000101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+    
+    ; QUARTA LINHA
+    REPEAT 2
+        ldx #%00100000
+        stx PF0
+        ldx #%11100100
+        stx PF1
+        ldx #%00000001
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%10100000
+        stx PF0
+        ldx #%00010000
+        stx PF1
+        ldx #%00001101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ; QUINTA LINHA
+    REPEAT 2
+        ldx #%01100000
+        stx PF0
+        ldx #%10101100
+        stx PF1
+        ldx #%00000001
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%11110000
+        stx PF0
+        ldx #%00010001
+        stx PF1
+        ldx #%00010101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ldx #0
+    stx PF0
+    stx PF1
+    stx PF2
+    
+    REPEAT 2
+        sta WSYNC
+    REPEND
+
+IrParaVblank:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Desenhando as 30 linhas do VBLANK (overscan) (30 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -371,51 +574,49 @@ CheckP0Up:
     bit SWCHA
     bne CheckP0Down
     lda P0YPos
-    cmp #60
+    cmp #47                         ; Limitando a posição Y do player 0 (superior)
     bpl CheckP0Down
     inc P0YPos
     lda #25
-    sta CharAnimOffset
+    sta CharAnimOffset0             ; Mudando a animação
 CheckP0Down:
     lda #%00100000
     bit SWCHA
     bne CheckP0Left
     lda P0YPos
-    cmp #2
+    cmp #2                          ; Limitando a posição Y do player 0 (inferior)
     bmi CheckP0Left
     dec P0YPos
     lda #50
-    sta CharAnimOffset
+    sta CharAnimOffset0
 
 CheckP0Left:
     lda #%01000000
     bit SWCHA
     bne CheckP0Right
     lda P0XPos
-    cmp #3
+    cmp #3                          ; Limitando a posição X do player 0 (esquerda)
     bmi CheckP0Right
     dec P0XPos
     lda #0
-    sta CharAnimOffset
+    sta CharAnimOffset0
 
 CheckP0Right:
     lda #%10000000
     bit SWCHA
     bne CheckP0Buttom;
     lda P0XPos
-    cmp #58
-    bpl  CheckP0Buttom;
+    cmp #58                         ; Limitando a posição X do player 0 (direita)
+    bpl CheckP0Buttom;
     inc P0XPos
     lda #0
-    sta CharAnimOffset
-    
-    
+    sta CharAnimOffset0
     
 CheckP0Buttom:
-	 lda #%10000000
+	lda #%10000000
 	bit INPT4
-        bne NoInput0
-        ;jmp NextFrame
+    bne NoInput0
+    ;jmp NextFrame
 
 NoInput0:
 
@@ -427,7 +628,7 @@ CheckP1Up:
     bit SWCHA
     bne CheckP1Down
     lda P1YPos
-    cmp #60
+    cmp #47
     bpl CheckP1Down
     inc P1YPos
     lda #25
@@ -460,15 +661,41 @@ CheckP1Right:
     bit SWCHA
     bne NoInput1
     lda P1XPos
-    cmp #132
+    cmp #130
     bpl NoInput1
     inc P1XPos
     lda #0
     sta CharAnimOffset1
 
 NoInput1:
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Checando se o botão reset foi pressionado
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CheckReset:
+    lda #$01
+    bit SWCHB
+    beq SwitchPressed
+    jmp NoInputReset
+SwitchPressed:
+    lda #0
+    sta Player1Venceu
+    sta Player2Venceu
+    sta ScoreP0
+    sta ScoreP1
+    lda #70
+    sta BallXPos 
+    lda #50
+    sta BallYPos 
+    lda #0
+    sta velocidadex
+    sta ENABL
+    jmp NADAAAAA
+NoInputReset:
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Checando colisão do Player 0 com a bola
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CheckCollisionP0Ball:
     lda #%01000000
     bit CXP0FB 
@@ -477,7 +704,7 @@ CheckCollisionP0Ball:
 .CollisionPOBL:
     lda #1
     sta IndoDireita
-    jsr GenerateJetSound
+    jsr GenerateColisionSoundBP
     jsr GenerateRandomVelocity
     lda Random1
     bpl AumentaVelocidade
@@ -485,7 +712,9 @@ CheckCollisionP0Ball:
     sta velocidadex
     jmp EndCollisionCheck
 
-  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Checando colisão do Player 1 com a bola
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CheckCollisionP1Ball:
     lda #%01000000
     bit CXP1FB 
@@ -494,7 +723,7 @@ CheckCollisionP1Ball:
 .CollisionP1BL:
     lda #0
     sta IndoDireita
-    jsr GenerateJetSound
+    jsr GenerateColisionSoundBP
     jsr GenerateRandomVelocity
     lda Random1
     bpl AumentaVelocidade
@@ -509,13 +738,14 @@ AumentaVelocidade:
 EndCollisionCheck          
     sta CXCLR
 
-    
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Limitando movimento da bola no eixo Y
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
     lda BallYPos
-    cmp #84
+    cmp #70
     bpl MovimentoCima
     lda BallYPos
-    cmp #2
+    cmp #5
     bmi MovimentoBaixo
     jmp MovimentoVertical
    
@@ -539,10 +769,10 @@ PlayfieldCima:
 PlayfieldBaixo:
     dec BallYPos
 Nada1:
-    
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Limitando movimento da bola no eixo X
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
     lda BallXPos
     cmp #134
     bpl MovimentoDireita
@@ -560,7 +790,7 @@ MovimentoDireita:
     jsr GenerateSoundGol
     jmp PosicaoInicial
     ;jmp Movimento      
-    
+
 MovimentoEsquerda:
     ;inc IndoDireita
     inc ScoreP0
@@ -574,10 +804,6 @@ PosicaoInicial:
     sta BallXPos 
     lda #0
     sta velocidadex
-    
-   
-    ;lda #80
-    ;sta BallYPos
     
 Movimento:
     lda IndoDireita
@@ -610,8 +836,9 @@ Normal2:
     dec BallXPos
 Nada:
 
-    
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Verificando se alguém ganhou o jogo
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 ScoreP0equal3:
     lda ScoreP0
     cmp #5
@@ -626,13 +853,8 @@ GameOver0:
     lda #0
     sta ScoreP0
     sta ScoreP1
-    lda TempoVitoria
-    cmp #180
-    beq Continua1
-    inc TempoVitoria
-    jmp InitSystem
-    ;lda #$30
-    ;sta BackgroundColor
+    lda #1
+    sta Player1Venceu
 Continua1:    
     lda #70
     sta BallXPos 
@@ -645,25 +867,17 @@ GameOver1:
     lda #0
     sta ScoreP0
     sta ScoreP1
-    lda TempoVitoria
-    cmp #180
-    beq Continua2
-    inc TempoVitoria
+    lda #1
+    sta Player2Venceu
 
-    jmp InitSystem1
-    ;lda #$30
-    ;sta BackgroundColor
 Continua2:    
     lda #70
     sta BallXPos 
     lda #80
     sta BallYPos 
-    
     jmp NADAAAAA    
     
 NADAAAA:
-    lda #$08
-    sta BackgroundColor
     
 NADAAAAA: 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -677,7 +891,6 @@ NADAAAAA:
 ;;; A guarda a posição no eixo-x
 ;;; Y é o objeto (0:player0, 1:player1, 2:missile0, 3:missile1, 4:ball)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 SetObjectXPos subroutine
     sta WSYNC                ; Começa uma scanline
     sec                      ; Setar carry flag
@@ -742,27 +955,32 @@ CalculateDigitOffset subroutine
 Sleep12Cycles subroutine
     rts
 
-GenerateJetSound subroutine
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Gerando som quando ocorre colisão da bola com o player
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GenerateColisionSoundBP subroutine
     lda #3
-    sta AUDV0                ; set the audio volume register
+    sta AUDV0                
 
     lda #5
-    sta AUDC0                ; set the audio control register to white noise
+    sta AUDC0                
 
-    lda BallXPos              ; loads the accumulator with the jet y-position
+    lda BallXPos              
     lsr
     lsr
-    lsr                      ; divide the accumulator by 8 (using right-shifts)
-    sta Temp                 ; save the Y/8 value in a temp variable
+    lsr                      
+    sta Temp                 
     lda #31
     sec
-    sbc Temp                 ; subtract 31-(Y/8)
+    sbc Temp                 
     lda #15
-    sta AUDF0                ; set the audio frequency/pitch register
+    sta AUDF0                
 
     rts
-    
-    
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Gerando posição aleatoria da bola no eixo-y
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GenerateRandomBall subroutine
     lda Random
     asl
@@ -783,7 +1001,10 @@ GenerateRandomBall subroutine
     sta BallYPos
     
     rts
-    
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Gerando velocidade aleatoria da bola ao ser rebatida
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   
 GenerateRandomVelocity subroutine
     lda Random1
     asl
@@ -796,62 +1017,34 @@ GenerateRandomVelocity subroutine
     asl
     rol Random1
     
-    rts   
-
+    rts 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Subrotina para gerar o som do jogo com base no arquivo sfx.asm
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   
 GenerateSoundGame subroutine
     lda #1
-    sta AUDV1                ; set the audio volume register
-    lda BallXPos              ; loads the accumulator with the jet y-position
-    lsr
-    lsr
-    lsr                      ; divide the accumulator by 8 (using right-shifts)
-    sta AUDF1                ; set the audio frequency/pitch register
-    lda #8
-    sta AUDC1               ; set the audio control register to white noise
-    rts              ; set the audio frequency/pitch register 
-    
-   
-    
-;* GenerateSoundGame subroutine
-    lda #1
-    sta AUDV1                ; set the audio volume register
+    sta AUDV1                ; Setando volume
     
     ldy ContadorSom
-    lda SFX_F,Y              ; loads the accumulator with the jet y-position
-    sta AUDF1                ; set the audio frequency/pitch register
-    cpy #58
-    beq ResetaContadorSom
-    jmp IncrementaContadorSom
-ResetaContadorSom:
-    lda #0
-    sta ContadorSom
-    jmp SetaControle
-IncrementaContadorSom:
+    lda SFX_F,Y              ; Percorrendo a tabela de som 'SFX_F'
+    sta AUDF1                ; Pega o valor da table e coloca no registrador de frequência
     inc ContadorSom
-SetaControle:
-    lda #12
-    sta AUDC1               ; set the audio control register to white noise
+    lda #5
+    sta AUDC1                ; Setando o registrador de controle para alterar o tipo de som
+    rts                      
 
-    rts              ; set the audio frequency/pitch register 
- ;    */
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Subrotina para gerar o som do gol
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 GenerateSoundGol subroutine
-
-	LDA #3
-	STA AUDV0       
-	LDA #13
-	STA AUDC0
-        lda #4
-        sta AUDF0
-        bne n1	   
+	lda #3
+	sta AUDV0                ; Volume     
+	lda #13
+	sta AUDC0                ; Tipo do som
+    lda #4
+    sta AUDF0                ; Frenquencia
     rts    
-n1  
-	LDA #9
-	STA AUDV0       
-	LDA #143
-	STA AUDC0
-        lda #9
-        sta AUDF0	   
-    rts 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lookup table para os digitos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -958,7 +1151,7 @@ Digits:
 P0Bitmap:
     .byte #%00000000;$80
     
-    ;pernas
+    ; Pernas
    	.byte #%11110111;$70
     .byte #%10100100;$70
     .byte #%10100100;$70
@@ -968,7 +1161,7 @@ P0Bitmap:
     .byte #%10100100;$70
     .byte #%10100100;$70
     
-    ;corpo
+    ; Corpo
     .byte #%11100110;$30
     .byte #%11100100;$30
     .byte #%11101100;$30
@@ -978,7 +1171,7 @@ P0Bitmap:
     .byte #%11111000;$30
     .byte #%11111000;$30
     
-    ;cabeça
+    ; Cabeça
     .byte #%11111000;$36
     .byte #%11001000;$36
     .byte #%11011000;$36
@@ -990,81 +1183,77 @@ P0Bitmap:
 
 P0Bitmapup:
 
-	.byte #%00000000;$80
-        
-         .byte #%00111111;--
-        .byte #%01111110;--
-        .byte #%01011010;--
-        .byte #%01111110;--
-        .byte #%01111110;--
-        .byte #%01111010;--
-        .byte #%01100110;--
-        .byte #%01111110;--
-        
+	.byte #%00000000;
 
-         .byte #%11111111;--
-        .byte #%11110001;--
-        .byte #%11110001;--
-        .byte #%11110001;--
-        .byte #%11111001;--
-        .byte #%11110101;--
-        .byte #%11110011;--
-        .byte #%11110001;--
+    ; Pernas
+    .byte #%00111111;--
+    .byte #%01111110;--
+    .byte #%01011010;--
+    .byte #%01111110;--
+    .byte #%01111110;--
+    .byte #%01111010;--
+    .byte #%01100110;--
+    .byte #%01111110;--
+        
+    ; Corpo
+    .byte #%11111111;--
+    .byte #%11110001;--
+    .byte #%11110001;--
+    .byte #%11110001;--
+    .byte #%11111001;--
+    .byte #%11110101;--
+    .byte #%11110011;--
+    .byte #%11110001;--
 	
-
-      .byte #%10100001;--
-        .byte #%10100001;--
-        .byte #%10100001;--
-        .byte #%10100001;--
-        .byte #%10100001;--
-        .byte #%10100001;--
-        .byte #%10101111;--
-        .byte #%10101111;--
+    ; Cabeça
+    .byte #%10100001;--
+    .byte #%10100001;--
+    .byte #%10100001;--
+    .byte #%10100001;--
+    .byte #%10100001;--
+    .byte #%10100001;--
+    .byte #%10101111;--
+    .byte #%10101111;--
         
 P0Bitmapdown:
 
 	.byte #%00000000;$80
         
-        ;Frame0
-        .byte #%10101111;$0E
-        .byte #%10100001;$0E
-        .byte #%10100001;$0E
-        .byte #%10100001;$0E
-        .byte #%10100001;$0E
-        .byte #%10100001;$0E
-        .byte #%10100001;$0E
-        .byte #%10100001;$0E
-        
-
-         .byte #%11110001;$0E
-        .byte #%11110011;$0E
-        .byte #%11110101;$0E
-        .byte #%11111001;$0E
-        .byte #%11110001;$0E
-        .byte #%11110001;$0E
-        .byte #%11110001;$0E
-        .byte #%11111111;$0E
+    ; Pernas
+    .byte #%10101111;$0E
+    .byte #%10100001;$0E
+    .byte #%10100001;$0E
+    .byte #%10100001;$0E
+    .byte #%10100001;$0E
+    .byte #%10100001;$0E
+    .byte #%10100001;$0E
+    .byte #%10100001;$0E
+    
+    ; Corpo
+    .byte #%11110001;$0E
+    .byte #%11110011;$0E
+    .byte #%11110101;$0E
+    .byte #%11111001;$0E
+    .byte #%11110001;$0E
+    .byte #%11110001;$0E
+    .byte #%11110001;$0E
+    .byte #%11111111;$0E
 	
-
-         .byte #%11111100;--
-        .byte #%11001100;--
-        .byte #%11110100;--
-        .byte #%11111100;--
-        .byte #%11111100;--
-        .byte #%10110100;--
-        .byte #%11111100;--
-        .byte #%01111000;--
-
-        
-
-
-
+    ; Cabeça
+    .byte #%11111100;--
+    .byte #%11001100;--
+    .byte #%11110100;--
+    .byte #%11111100;--
+    .byte #%11111100;--
+    .byte #%10110100;--
+    .byte #%11111100;--
+    .byte #%01111000;--
 
 P1Bitmap:
     .byte #%00000000;$80
     
-     ;pernas
-   	.byte #%11101111;$80
+    ; Pernas
+    .byte #%11101111;$80
     .byte #%00100101;$80
     .byte #%00100101;$80
     .byte #%00100101;$80
@@ -1073,7 +1262,7 @@ P1Bitmap:
     .byte #%00100101;$80
     .byte #%00100101;$80
     
-    ;corpo
+    ; Corpo
     .byte #%01100111;$32
     .byte #%00100111;$32
     .byte #%00100111;$32
@@ -1083,7 +1272,7 @@ P1Bitmap:
     .byte #%00011111;$32
     .byte #%00011111;$32
     
-    ;cabeça
+    ; Cabeça
     .byte #%00011111;$34
     .byte #%00010011;$34
     .byte #%00011011;$34
@@ -1097,71 +1286,70 @@ P1Bitmapup:
 
 	.byte #%00000000;$80
         
-        ;Frame0
-        .byte #%01111111;--
-        .byte #%00111111;--
-        .byte #%00101101;--
-        .byte #%00111111;--
-        .byte #%00111111;--
-        .byte #%00111101;--
-        .byte #%00110011;--
-        .byte #%00111111;--
-        
+    ; Pernas
+    .byte #%01111111;--
+    .byte #%00111111;--
+    .byte #%00101101;--
+    .byte #%00111111;--
+    .byte #%00111111;--
+    .byte #%00111101;--
+    .byte #%00110011;--
+    .byte #%00111111;--
 
-        .byte #%11111111;--
-        .byte #%10001111;--
-        .byte #%10001111;--
-        .byte #%10001111;--
-        .byte #%10011111;--
-        .byte #%10101111;--
-        .byte #%11001111;--
-        .byte #%10001111;--
-	
+    ; Corpo
+    .byte #%11111111;--
+    .byte #%10001111;--
+    .byte #%10001111;--
+    .byte #%10001111;--
+    .byte #%10011111;--
+    .byte #%10101111;--
+    .byte #%11001111;--
+    .byte #%10001111;--
 
-         .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-         .byte #%11110101;--
-        .byte #%11110101;--
-        
+    ; Cabeça
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%11110101;--
+    .byte #%11110101;--
+    
 P1Bitmapdown:
 
 	.byte #%00000000;$80
         
-        ;Frame0
-         .byte #%11110101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
-        .byte #%10000101;--
+    ; Pernas
+    .byte #%11110101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
+    .byte #%10000101;--
         
 
-      .byte #%10001111;--
-        .byte #%11001111;--
-        .byte #%10101111;--
-        .byte #%10011111;--
-        .byte #%10001111;--
-        .byte #%10001111;--
-        .byte #%10001111;--
-        .byte #%11111111;--
-	
+    ; Corpo
+    .byte #%10001111;--
+    .byte #%11001111;--
+    .byte #%10101111;--
+    .byte #%10011111;--
+    .byte #%10001111;--
+    .byte #%10001111;--
+    .byte #%10001111;--
+    .byte #%11111111;--
 
-         .byte #%00111111;--
-        .byte #%00110011;--
-        .byte #%00101111;--
-        .byte #%00111111;--
-        .byte #%00111111;--
-        .byte #%00101101;--
-        .byte #%00111111;--
-        .byte #%00011110;--     
-
-            
+    ; Cabeça
+    .byte #%00111111;--
+    .byte #%00110011;--
+    .byte #%00101111;--
+    .byte #%00111111;--
+    .byte #%00111111;--
+    .byte #%00101101;--
+    .byte #%00111111;--
+    .byte #%00011110;--     
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lookup table para cores dos players
@@ -1170,7 +1358,7 @@ P1Bitmapdown:
 P0Color:
     .byte #$00;
 
-    ;cor das pernas
+    ; Cor das pernas
     .byte #$70;
     .byte #$70;
     .byte #$70;
@@ -1180,7 +1368,7 @@ P0Color:
     .byte #$70;
     .byte #$70;
     
-    ;cor do corpo
+    ; Cor do corpo
     .byte #$30;
     .byte #$30;
     .byte #$30;
@@ -1190,7 +1378,7 @@ P0Color:
     .byte #$30;
     .byte #$30;
     
-    ;cor da cabeça
+    ; Cor da cabeça
     .byte #$36;
     .byte #$36;
     .byte #$36;
@@ -1203,8 +1391,9 @@ P0Color:
     
 P0Colorup:   
 	.byte #$00;
-        
-         .byte #$30;
+
+    ; Cor das Pernas
+    .byte #$30;
     .byte #$36;
     .byte #$36;
     .byte #$36;
@@ -1213,30 +1402,31 @@ P0Colorup:
     .byte #$36;
     .byte #$36;    
 
-        
+    ; Cor do Corpo
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
 
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70;
-        .byte #$70
-        
+    ; Cor da Cabeça
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70
+    
 P0Colordown:   
 	.byte #$00;
         
-       .byte #$70;
+    ; Cor das Pernas
+    .byte #$70;
     .byte #$70;
     .byte #$70;
     .byte #$70;
@@ -1245,17 +1435,18 @@ P0Colordown:
     .byte #$70;
     .byte #$70;
         
+    ; Cor do Corpo
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
+    .byte #$40;
 
-       .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        .byte #$40;
-        
-        .byte #$36;
+    ; Cor da Cabeça
+    .byte #$36;
     .byte #$36;
     .byte #$36;
     .byte #$36;
@@ -1264,12 +1455,10 @@ P0Colordown:
     .byte #$30;
     .byte #$30;    
 
-
-
 P1Color:
     .byte #$00;
     
-    ;cor das pernas
+    ; Cor das pernas
     .byte #$70;
     .byte #$70;
     .byte #$70;
@@ -1279,7 +1468,7 @@ P1Color:
     .byte #$70;
     .byte #$70;
     
-    ;cor do corpo
+    ; Cor do corpo
     .byte #$a4;
     .byte #$a4;
     .byte #$a4;
@@ -1289,7 +1478,7 @@ P1Color:
     .byte #$a4;
     .byte #$a4;
     
-    ;cor da cabeça
+    ; Cor da cabeça
     .byte #$36;
     .byte #$36;
     .byte #$36;
@@ -1301,8 +1490,9 @@ P1Color:
     
 P1Colorup:   
 	.byte #$00;
-        
-        .byte #$a4;
+
+    ; Cor das pernas
+    .byte #$a4;
     .byte #$36;
     .byte #$36;
     .byte #$36;
@@ -1311,17 +1501,18 @@ P1Colorup:
     .byte #$a4;
     .byte #$a4;  
         
+    ; Cor do corpo
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
 
-        byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-        
-        .byte #$70;
+    ; Cor da cabeça
+    .byte #$70;
     .byte #$70;
     .byte #$70;
     .byte #$70;
@@ -1332,570 +1523,285 @@ P1Colorup:
         
 P1Colordown:   
 	.byte #$00;
-        
-        .byte #$70;
-    .byte #$70;
-    .byte #$70;
-    .byte #$70;
-    .byte #$70;
-    .byte #$70;
-    .byte #$70;
-    .byte #$70;
-        
 
-      byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
-    .byte #$a4;
+    ; Cor das pernas
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
+    .byte #$70;
         
-       .byte #$36;
+    ; Cor do corpo
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+    .byte #$a4;
+
+    ; Cor da cabeça
     .byte #$36;
     .byte #$36;
     .byte #$36;
     .byte #$36;
     .byte #$36;
+    .byte #$36;
     .byte #$a4;
     .byte #$a4;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Lookup table do som
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    include "sfx.asm"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Lookup table  das mensagens de vitoria
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+MensagemVitoriaP0:
+    .byte #%11000111;--n
+    .byte #%11000111;--
+    .byte #%11001111;--
+    .byte #%11011011;--
+    .byte #%11011011;--
+    .byte #%11010011;--
+    .byte #%11110011;--
+    .byte #%11110011;--
+
+    .byte %00000000
+    .byte %00000000
+
+    .byte #%00011000;--i
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+
+    .byte %00000000
+
+    .byte #%11000011;--
+    .byte #%11100111;--
+    .byte #%11111111;--
+    .byte #%11011011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+
+    .byte #%11111111;--1
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00111000;--
+
+    .byte %00000000
+    .byte %00000000 
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+
+    .byte #%11000111;--r
+    .byte #%11001110;--
+    .byte #%11011100;--
+    .byte #%11111000;--
+    .byte #%11111111;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11111111;--
+
+    .byte %00000000
+
+    .byte #%11111111;--e
+    .byte #%11111111;--
+    .byte #%11000000;--
+    .byte #%11111111;--
+    .byte #%11111111;--
+    .byte #%11000000;--
+    .byte #%11111111;--
+    .byte #%11111111;--
+
+    .byte %00000000
+
+    .byte #%00011000;--y
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00111100;--
+    .byte #%01100110;--
+    .byte #%11000011;--
+    .byte #%10000001;--
+
+    .byte %00000000
+
+    .byte #%11000011;--a
+    .byte #%11000011;--
+    .byte #%11111111;-- 
+    .byte #%11111111;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11111111;--
+
+    .byte %00000000
+
+    .byte #%11111111;--l
+    .byte #%11111111;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+
+    .byte %00000000
+
+    .byte #%11000000;--p
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11111111;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11111111;--
+
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+MensagemVitoriaP1:
+    .byte #%11000111;--n
+    .byte #%11000111;--
+    .byte #%11001111;--
+    .byte #%11011011;--
+    .byte #%11011011;--
+    .byte #%11010011;--
+    .byte #%11110011;--
+    .byte #%11110011;--
     
-SFX_F:
-     .byte #0
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #20
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #15
-     .byte #15
-     .byte #15
-     .byte #16
-     .byte #16
-     .byte #16
-     .byte #16
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-PF_HEIGHT = 96	
-											; this number
-LETTER_COLOR  = $1E   
-BG_COLOR = $00	
-
-InitSystem:
-
-		
-ClearMem:
-		sta 0,X		
-		dex			
-		bne ClearMem	
-         
-       
-        lda #LETTER_COLOR
-        sta COLUP0	
- 
-     
-Main:
-
-
-
-        jsr VerticalSync    
-        jsr VerticalBlank   
-        jsr Kernel          
-        jsr OverScan        
-        jmp Main            
-        
-  
-VerticalSync:
-        lda #2
-        sta WSYNC   
-        sta VSYNC   
-        sta VBLANK  
-        lda #47
-        sta TIM64T  
-        sta WSYNC   
-        sta WSYNC   
-        lda #0
-        sta GRP0	
-        sta WSYNC   
-        sta VSYNC  
-        rts
- 
-VerticalBlank:    
-
+    .byte %00000000
+    .byte %00000000
     
-PositionObjects:
-        sta WSYNC
-      
-        
-WasteTime:
-        nop				
-        dey
-        bne WasteTime
-        sta RESP0,X    
- 
-        
-VBwait:
-        sta WSYNC
-        bit TIMINT		
-        bpl VBwait    
-        rts			
-        
-      
-Kernel:    
-          
-        lda #0
-        ldy #PF_HEIGHT   
-        sta WSYNC        
-        sta VBLANK      
-        				
-        lda BG_COLOR	
-        				
-        sta COLUBK          
-        ldx #96			
-        				
-        
-
-ArenaLoop:            
-        sta WSYNC        	
-        lda HumanGfx,x		
-        sta GRP0			
-        dex					
-        sta WSYNC          
-        					
-        					
-        dey         		
-        bne ArenaLoop   	
-        rts          		
+    .byte #%00011000;--i
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
     
-         
-OverScan:
-        sta WSYNC  
-        lda #2      
-        sta VBLANK 
-        lda #22		
-        sta TIM64T  
-   
-OSwait:
-        sta WSYNC
-        bit TIMINT	
-        bpl OSwait  
-        rts 		
-       
-  
-
-HumanGfx:
-
- 
-       
-        
-        .byte #%11000111;--n
-        .byte #%11000111;--
-        .byte #%11001111;--
-        .byte #%11011011;--
-        .byte #%11011011;--
-        .byte #%11010011;--
-        .byte #%11110011;--
-        .byte #%11110011;--
-        
-        .byte %00000000
-        
-      
-        .byte %00000000
-        
-       .byte #%00011000;--i
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        
-        .byte %00000000
-        
-        .byte #%11000011;--
-        .byte #%11100111;--
-        .byte #%11111111;--
-        .byte #%11011011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        
-        .byte %00000000
-        .byte %00000000
-        .byte %00000000
-        
-        .byte #%11111111;--1
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00111000;--
-        
-        
-        
-        .byte %00000000
-        .byte %00000000 ;space
-        .byte %00000000
-        .byte %00000000
-        .byte %00000000
-     
-        
-        .byte %00000000
-        
-         .byte #%11000111;--r
-        .byte #%11001110;--
-        .byte #%11011100;--
-        .byte #%11111000;--
-        .byte #%11111111;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11111111;--
-        
-          .byte %00000000
-        
-        .byte #%11111111;--e
-        .byte #%11111111;--
-        .byte #%11000000;--
-        .byte #%11111111;--
-        .byte #%11111111;--
-        .byte #%11000000;--
-        .byte #%11111111;--
-        .byte #%11111111;--
-        
-        .byte %00000000
-        
-        .byte #%00011000;--y
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00111100;--
-        .byte #%01100110;--
-        .byte #%11000011;--
-        .byte #%10000001;--
-        
-        .byte %00000000
-        
-       .byte #%11000011;--a
-        .byte #%11000011;--
-        .byte #%11111111;-- 
-        .byte #%11111111;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11111111;--
-        
-        .byte %00000000
-        
-        .byte #%11111111;--l
-        .byte #%11111111;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
+    .byte %00000000
     
-        
-        .byte %00000000
-        
-         .byte #%11000000;--p
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11111111;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11111111;--
-        
-     
-        
-        
-        
-        
-        .byte %00000000
-        .byte %00000000
-        .byte %00000000
-        
-        
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-PF_HEIGHT1 = 96							
-LETTER_COLOR1   = $1E   
-BG_COLOR1 = $00	
-
-InitSystem1:
-
-		
-		
-ClearMem1:
-		sta 0,X		
-		dex			
-		bne ClearMem1	
-         
-       
-        lda #LETTER_COLOR1
-        sta COLUP0	
- 
-     
-Main1:
-
-
-
-        jsr VerticalSync1    
-        jsr VerticalBlank1   
-        jsr Kernel1          
-        jsr OverScan1       
-        jmp Main1          
-        
-  
-VerticalSync1:
-        lda #2
-        sta WSYNC   
-        sta VSYNC   
-        sta VBLANK 
-        lda #47
-        sta TIM64T  
-        sta WSYNC   
-        sta WSYNC   
-        lda #0
-        sta GRP0	
-        sta WSYNC   
-        sta VSYNC  
-        rts
- 
-VerticalBlank1:    
-
+    .byte #%11000011;--
+    .byte #%11100111;--
+    .byte #%11111111;--
+    .byte #%11011011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
     
-PositionObjects1:
-        sta WSYNC
-       
-        
-WasteTime1:
-        nop				
-        dey
-        bne WasteTime1
-        sta RESP0,X   
- 
-        
-VBwait1:
-        sta WSYNC
-        bit TIMINT		
-        bpl VBwait1  
-        rts			
-        
-      
-Kernel1:    
-          
-        lda #0
-        ldy #PF_HEIGHT1   
-        sta WSYNC       
-        sta VBLANK      
-        				
-        lda BG_COLOR	
-        				
-        sta COLUBK          
-        ldx #96			
-        				
-        
-
-ArenaLoop1:            
-        sta WSYNC        	
-        lda HumanGfx1,x		
-        sta GRP0			
-        dex					
-        sta WSYNC           
-        					
-        					
-        dey         		
-        bne ArenaLoop1   	
-        rts          		
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
     
-         
-OverScan1:
-        sta WSYNC   
-        lda #2      
-        sta VBLANK  
-        lda #22		
-        sta TIM64T 
-   
-OSwait1:
-        sta WSYNC
-        bit TIMINT	
-        bpl OSwait1  
-        rts 		
-
-HumanGfx1:
-
- 
-       
-        
-        .byte #%11000111;--n
-        .byte #%11000111;--
-        .byte #%11001111;--
-        .byte #%11011011;--
-        .byte #%11011011;--
-        .byte #%11010011;--
-        .byte #%11110011;--
-        .byte #%11110011;--
-        
-        .byte %00000000
-        
-        
-        
-        .byte %00000000
-        
-       .byte #%00011000;--i
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        
-        .byte %00000000
-        
-        .byte #%11000011;--
-        .byte #%11100111;--
-        .byte #%11111111;--
-        .byte #%11011011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        
-        .byte %00000000
-        .byte %00000000
-        .byte %00000000
-        
-      .byte #%11111111;--2
-        .byte #%11111111;--
-        .byte #%10000000;--
-        .byte #%11111111;--
-        .byte #%11111111;--
-        .byte #%00000001;--
-        .byte #%11111111;--
-        .byte #%11111111;--
-          
-        
-        
-        .byte %00000000
-        .byte %00000000 ;space
-        .byte %00000000
-        .byte %00000000
-        .byte %00000000
-       
-        
-        .byte %00000000
-        
-         .byte #%11000111;--r
-        .byte #%11001110;--
-        .byte #%11011100;--
-        .byte #%11111000;--
-        .byte #%11111111;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11111111;--
-        
-          .byte %00000000
-        
-        .byte #%11111111;--e
-        .byte #%11111111;--
-        .byte #%11000000;--
-        .byte #%11111111;--
-        .byte #%11111111;--
-        .byte #%11000000;--
-        .byte #%11111111;--
-        .byte #%11111111;--
-        
-        .byte %00000000
-        
-        .byte #%00011000;--y
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00011000;--
-        .byte #%00111100;--
-        .byte #%01100110;--
-        .byte #%11000011;--
-        .byte #%10000001;--
-        
-        .byte %00000000
-        
-       .byte #%11000011;--a
-        .byte #%11000011;--
-        .byte #%11111111;--
-        .byte #%11111111;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11111111;--
-        
-        .byte %00000000
-        
-        .byte #%11111111;--l
-        .byte #%11111111;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        
-       
-        
-        .byte %00000000
-        
-         .byte #%11000000;--p
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11000000;--
-        .byte #%11111111;--
-        .byte #%11000011;--
-        .byte #%11000011;--
-        .byte #%11111111;--
-        
-        
-        
-        
-        
-        
-        .byte %00000000
-        .byte %00000000
-        .byte %00000000
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+    .byte #%11111111;--2
+    .byte #%11111111;--
+    .byte #%10000000;--
+    .byte #%11111111;--
+    .byte #%11111111;--
+    .byte #%00000001;--
+    .byte #%11111111;--
+    .byte #%11111111;--
+    
+    .byte %00000000
+    .byte %00000000 
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    
+    .byte #%11000111;--r
+    .byte #%11001110;--
+    .byte #%11011100;--
+    .byte #%11111000;--
+    .byte #%11111111;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11111111;--
+    
+    .byte %00000000
+    
+    .byte #%11111111;--e
+    .byte #%11111111;--
+    .byte #%11000000;--
+    .byte #%11111111;--
+    .byte #%11111111;--
+    .byte #%11000000;--
+    .byte #%11111111;--
+    .byte #%11111111;--
+    
+    .byte %00000000
+    
+    .byte #%00011000;--y
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00011000;--
+    .byte #%00111100;--
+    .byte #%01100110;--
+    .byte #%11000011;--
+    .byte #%10000001;--
+    
+    .byte %00000000
+    
+    .byte #%11000011;--a
+    .byte #%11000011;--
+    .byte #%11111111;--
+    .byte #%11111111;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11111111;--
+    
+    .byte %00000000
+    
+    .byte #%11111111;--l
+    .byte #%11111111;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    
+    .byte %00000000
+    
+    .byte #%11000000;--p
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11000000;--
+    .byte #%11111111;--
+    .byte #%11000011;--
+    .byte #%11000011;--
+    .byte #%11111111;--
+    
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Completar a ROM para 4KB
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

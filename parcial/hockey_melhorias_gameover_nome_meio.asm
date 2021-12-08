@@ -5,6 +5,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
     include "vcs.h"
     include "macro.h" 
+    
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Segmento com variaveis não inicializadas
@@ -63,7 +64,7 @@ Start:
     lda #10
     sta P0YPos     
 
-    lda #50
+    lda #20
     sta P1YPos     
 
     lda #0
@@ -74,7 +75,7 @@ Start:
     lda #70
     sta BallXPos 
 
-    lda #80
+    lda #50
     sta BallYPos  
     
     lda #1
@@ -287,7 +288,7 @@ NextFrame:
     ldx #%00000000
     stx PF2
 
-    ldx #84                  ; 2-scanline kernel
+    ldx #70                  ; 2-scanline kernel
 .GameLineLoop:
     DRAW_BALL
 .AreWeInsideP0Sprite:
@@ -352,6 +353,164 @@ NextFrame:
         sta WSYNC
     REPEND
 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    lda #$00                    ; Amerelo
+    sta COLUPF
+
+    lda #%00000000
+    sta CTRLPF
+    
+    ;PRIMEIRA LINHA
+    REPEAT 2
+        ldx #%01100000
+        stx PF0
+        ldx #%01001101
+        stx PF1
+        ldx #%00000010
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        
+
+        ldx #%11110000
+        stx PF0
+        ldx #%00010001
+        stx PF1
+        ldx #%00010101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ;SEGUNDA LINHA
+
+    REPEAT 2  
+        ldx #%00100000
+        stx PF0
+        ldx #%11101001
+        stx PF1
+        ldx #%00000010
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%10100000
+        stx PF0
+        ldx #%00010001
+        stx PF1
+        ldx #%00001100
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ; TERCEIRA LINHA
+    REPEAT 2
+        ldx #%01100000
+        stx PF0
+        ldx #%10101100
+        stx PF1
+        ldx #%00000001
+        stx PF2
+        
+      
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%10100000
+        stx PF0
+        ldx #%01111101
+        stx PF1
+        ldx #%00000101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+    
+    ; QUARTA LINHA
+    REPEAT 2
+        ldx #%00100000
+        stx PF0
+        ldx #%11100100
+        stx PF1
+        ldx #%00000001
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%10100000
+        stx PF0
+        ldx #%00010000
+        stx PF1
+        ldx #%00001101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ; QUINTA LINHA
+    REPEAT 2
+        ldx #%01100000
+        stx PF0
+        ldx #%10101100
+        stx PF1
+        ldx #%00000001
+        stx PF2
+
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+
+        ldx #%11110000
+        stx PF0
+        ldx #%00010001
+        stx PF1
+        ldx #%00010101
+        stx PF2
+
+        sta WSYNC
+    REPEND
+
+    ldx #0
+    stx PF0
+    stx PF1
+    stx PF2
+    
+    REPEAT 2
+        sta WSYNC
+    REPEND
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Desenhando as 30 linhas do VBLANK (overscan) (30 linhas)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -371,7 +530,7 @@ CheckP0Up:
     bit SWCHA
     bne CheckP0Down
     lda P0YPos
-    cmp #60
+    cmp #47
     bpl CheckP0Down
     inc P0YPos
     lda #25
@@ -427,7 +586,7 @@ CheckP1Up:
     bit SWCHA
     bne CheckP1Down
     lda P1YPos
-    cmp #60
+    cmp #47
     bpl CheckP1Down
     inc P1YPos
     lda #25
@@ -460,7 +619,7 @@ CheckP1Right:
     bit SWCHA
     bne NoInput1
     lda P1XPos
-    cmp #132
+    cmp #130
     bpl NoInput1
     inc P1XPos
     lda #0
@@ -512,10 +671,10 @@ EndCollisionCheck
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda BallYPos
-    cmp #84
+    cmp #70
     bpl MovimentoCima
     lda BallYPos
-    cmp #2
+    cmp #5
     bmi MovimentoBaixo
     jmp MovimentoVertical
    
@@ -798,7 +957,7 @@ GenerateRandomVelocity subroutine
     
     rts   
 
-GenerateSoundGame subroutine
+;GenerateSoundGame subroutine
     lda #1
     sta AUDV1                ; set the audio volume register
     lda BallXPos              ; loads the accumulator with the jet y-position
@@ -811,16 +970,16 @@ GenerateSoundGame subroutine
     rts              ; set the audio frequency/pitch register 
     
    
-    
-;* GenerateSoundGame subroutine
+   
+GenerateSoundGame subroutine
     lda #1
     sta AUDV1                ; set the audio volume register
     
     ldy ContadorSom
     lda SFX_F,Y              ; loads the accumulator with the jet y-position
     sta AUDF1                ; set the audio frequency/pitch register
-    cpy #58
-    beq ResetaContadorSom
+    ;cpy #247
+    ;beq ResetaContadorSom
     jmp IncrementaContadorSom
 ResetaContadorSom:
     lda #0
@@ -829,11 +988,11 @@ ResetaContadorSom:
 IncrementaContadorSom:
     inc ContadorSom
 SetaControle:
-    lda #12
+    lda #5
     sta AUDC1               ; set the audio control register to white noise
 
     rts              ; set the audio frequency/pitch register 
- ;    */
+     
 GenerateSoundGol subroutine
 
 	LDA #3
@@ -852,6 +1011,8 @@ n1
         lda #9
         sta AUDF0	   
     rts 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lookup table para os digitos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1361,45 +1522,8 @@ P1Colordown:
     .byte #$a4;
     .byte #$a4;
     
-SFX_F:
-     .byte #0
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #20
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #15
-     .byte #15
-     .byte #15
-     .byte #16
-     .byte #16
-     .byte #16
-     .byte #16
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #20
-     .byte #20
-     .byte #20
-     .byte #24
-     .byte #24
-     .byte #24
-     .byte #24
+    include "sfx.asm"
+
      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
