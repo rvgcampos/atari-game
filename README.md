@@ -2,7 +2,7 @@
 Jogo feito em assembly para a disciplina de Interface Hardware-Software do curso de Engenharia da Computação da Universidade Federal de Sergipe.
 
 # Imagens
-!(/imagem_principal.png)
+!(imagem_principal.png)
 # Funcionamento
 O jogo é composto por uma arena (preta) onde os dois players (Player 0 e Player 1) podem se mover até metade da arena. Cada Player pode
 rebater o disco. O objetivo do jogo consiste em conseguir fazer 5 gols primeiro. Há algumas características importantes:
