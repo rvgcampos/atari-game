@@ -16,6 +16,7 @@ de maneira aleatória.
 1. Há dois placares e o nome do jogo
 
 # Vídeo de Apresentação
+Vídeo da apresentação no [Youtube](https://www.youtube.com/watch?v=3h19bnORkWg)
 
 # Ferramentas Utilizadas
 * Linguagem Assembly do Atari
