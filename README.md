@@ -3,6 +3,14 @@ Jogo feito em assembly para a disciplina de Interface Hardware-Software do curso
 
 # Imagens
 ![jogo](./imagem_principal.png)
+
+# Arquivos
+* **'parcial_1'** e **'parcial_21** contém arquivos parciais, ou seja, arquivos que foram criados ao longo do tempo para o desenvolvimento
+* **'midi_python'** é o projeto em python feito, para facilmente gerar sons para o atari
+* **Apresentação Inicio.pdf** é o arquivo usado na apresentação inicial, antes de mostrar o código
+* **Apresentação.pdf** é o arquivo usado para mostrar os fundamentos do atari
+* **Interface Hardware Software.pdf** é o arquivo usado para apresentar a proposta primeiramente
+
 # Funcionamento
 O jogo é composto por uma arena (preta) onde os dois players (Player 0 e Player 1) podem se mover até metade da arena. Cada Player pode
 rebater o disco. O objetivo do jogo consiste em conseguir fazer 5 gols primeiro. Há algumas características importantes:
@@ -33,12 +41,12 @@ Vídeo da apresentação no [Youtube](https://www.youtube.com/watch?v=3h19bnORkW
 
 ## Primeiro Caminho - Emulador Online
 1. Acesse o site do [8bitworkshop](https://8bitworkshop.com/), e clique no botão 'Open 8bitworkshop IDE'.
-1. Logo após, acesse o arquivo *disk_final.asm* e copie o seu conteúdo colando-o em seguida na página aberta pelo site 8bitworkshop.
+1. Logo após, acesse o arquivo *disk.asm* e copie o seu conteúdo colando-o em seguida na página aberta pelo site 8bitworkshop.
 1. Por fim, basta obter o arquivo *sfx.asm* e colocá-lo no site do 8bitworkshop. Para isso, vá até icone em hamburguer que fica do lado
 esquerdo superior, e escolha a opção upload realizando assim o uploado do arquivo requerido. Feito isso, o jogo já estará rodando.
 
 ## Segundo Caminho - Emulado Offline
 1. Instalar o Stella no estilo 'next next fisish'.
 1. Instalar o dasm, colocando-o como uma variável de ambiente do sistema.
-1. Após isso, clone o repositório, entre na pasta e execute o comando 'dasm disk_final.asm -f3 -v0 -ocart'.
+1. Após isso, clone o repositório, entre na pasta e execute o comando 'dasm disk.asm -f3 -v0 -ocart'.
 1. Feito isso, será gerado um arquivo 'cart'. Renomeie-o para 'cart.bin' e abra o arquivo com o Stella

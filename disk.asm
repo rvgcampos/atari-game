@@ -399,7 +399,7 @@ Placar:
     REPEND
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Escrevend o nome
+;;; Escrevendo o nome
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
     lda #$00                    ; Amarelo
     sta COLUPF
@@ -604,18 +604,18 @@ CheckP0Left:
 CheckP0Right:
     lda #%10000000
     bit SWCHA
-    bne CheckP0Buttom;
+    bne NoInput0;
     lda P0XPos
     cmp #58                         ; Limitando a posição X do player 0 (direita)
-    bpl CheckP0Buttom;
+    bpl NoInput0;
     inc P0XPos
     lda #0
     sta CharAnimOffset0
-    
+/*     
 CheckP0Buttom:
 	lda #%10000000
 	bit INPT4
-    bne NoInput0
+    bne NoInput0 */
     ;jmp NextFrame
 
 NoInput0:
@@ -672,7 +672,7 @@ NoInput1:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Checando se o botão reset foi pressionado
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-CheckReset:
+/* CheckReset:
     lda #$01
     bit SWCHB
     beq SwitchPressed
@@ -691,7 +691,7 @@ SwitchPressed:
     sta velocidadex
     sta ENABL
     jmp NADAAAAA
-NoInputReset:
+NoInputReset: */
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Checando colisão do Player 0 com a bola
