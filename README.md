@@ -26,6 +26,9 @@ de maneira aleatória.
 # Vídeo de Apresentação
 Vídeo da apresentação no [Youtube](https://www.youtube.com/watch?v=3h19bnORkWg)
 
+# Vídeo de Fundamentos do Atari
+Vídeo da apresentação no [Youtube](https://www.youtube.com/watch?v=0h6yHRecvRQ)
+
 # Ferramentas Utilizadas
 * Linguagem Assembly do Atari
 * Editor de código - Visual Studio Code

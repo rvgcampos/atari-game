@@ -995,6 +995,8 @@ GenerateRandomBall subroutine
     
     lsr
     lsr
+    lsr
+    lsr
     sta BallYPos
     lda #20
     adc BallYPos
